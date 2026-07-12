@@ -23,7 +23,6 @@ type StickerLayer = {
   y: number;
   scale: number;
   rotation: number;
-  opacity: number;
   label: string;
   border: boolean;
   emoji?: string;
@@ -581,7 +580,7 @@ function drawStickers(
   stickers.forEach((sticker) => {
     const renderSize = getStickerRenderSize(sticker);
     context.save();
-    context.globalAlpha = sticker.opacity;
+    context.globalAlpha = 1;
     context.shadowColor = "rgba(0, 0, 0, 0.28)";
     context.shadowBlur = 14;
     context.shadowOffsetY = 6;
@@ -730,7 +729,6 @@ export function MemeGenerator() {
                   ...currentSticker,
                   width: image.naturalWidth,
                   height: image.naturalHeight,
-                  opacity: 1,
                 }
               : currentSticker,
           ),
@@ -1025,7 +1023,6 @@ export function MemeGenerator() {
       y: placement.y,
       scale: 1,
       rotation: 0,
-      opacity: 1,
       border: false,
     };
 
@@ -1088,7 +1085,6 @@ export function MemeGenerator() {
       y: canvasSize / 2 + (stickers.length % 3) * 26,
       scale: 1,
       rotation: 0,
-      opacity: 1,
       border: false,
     };
 
@@ -1110,7 +1106,6 @@ export function MemeGenerator() {
                 maxStickerScale,
                 Math.max(minStickerScale, sticker.scale + delta),
               ),
-              opacity: 1,
             }
           : sticker,
       ),
@@ -1427,7 +1422,6 @@ export function MemeGenerator() {
           ? {
               ...sticker,
               scale: nextScale,
-              opacity: 1,
             }
           : sticker,
       ),
