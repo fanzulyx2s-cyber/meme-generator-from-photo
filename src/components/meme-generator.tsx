@@ -547,26 +547,82 @@ function drawCustomEmojiSticker(
   sticker: StickerLayer,
 ) {
   const size = getStickerRenderSize(sticker).width;
-  const x = 0;
-  const y = 0;
   const emoji = sticker.emoji ?? sticker.content ?? "";
+  const offscreenSize = Math.ceil(size * 1.4);
+  const offscreen = document.createElement("canvas");
+  offscreen.width = offscreenSize;
+  offscreen.height = offscreenSize;
+  const offscreenContext = offscreen.getContext("2d");
 
   context.save();
   context.translate(sticker.x, sticker.y);
   context.rotate((sticker.rotation * Math.PI) / 180);
   context.globalAlpha = 1;
 
-  context.font = `900 ${size * 0.82}px "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", system-ui, sans-serif`;
-  context.textAlign = "center";
-  context.textBaseline = "middle";
+  if (!offscreenContext) {
+    context.font = `900 ${size * 0.82}px "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", system-ui, sans-serif`;
+    context.textAlign = "center";
+    context.textBaseline = "middle";
+    context.fillText(emoji, 0, 0);
+    context.restore();
+    return;
+  }
+
+  offscreenContext.clearRect(0, 0, offscreenSize, offscreenSize);
+  offscreenContext.globalAlpha = 1;
+  offscreenContext.font = `900 ${size * 0.82}px "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", system-ui, sans-serif`;
+  offscreenContext.textAlign = "center";
+  offscreenContext.textBaseline = "middle";
+  offscreenContext.fillText(emoji, offscreenSize / 2, offscreenSize / 2);
+
+  const imageData = offscreenContext.getImageData(0, 0, offscreenSize, offscreenSize);
+  for (let index = 3; index < imageData.data.length; index += 4) {
+    if (imageData.data[index] > 8) {
+      imageData.data[index] = 255;
+    } else {
+      imageData.data[index] = 0;
+    }
+  }
+  offscreenContext.putImageData(imageData, 0, 0);
+
   context.shadowColor = "rgba(0, 0, 0, 0.34)";
   context.shadowBlur = size * 0.08;
   context.shadowOffsetY = size * 0.04;
-  context.filter = "saturate(1.35) contrast(1.12)";
-  context.fillText(emoji, x, y);
-  context.fillText(emoji, x, y);
+  context.drawImage(offscreen, -offscreenSize / 2, -offscreenSize / 2);
+
   context.restore();
-  return;
+}
+
+function drawOpaqueImageSticker(
+  context: CanvasRenderingContext2D,
+  image: HTMLImageElement,
+  width: number,
+  height: number,
+) {
+  const offscreen = document.createElement("canvas");
+  offscreen.width = Math.max(1, Math.ceil(width));
+  offscreen.height = Math.max(1, Math.ceil(height));
+  const offscreenContext = offscreen.getContext("2d");
+
+  if (!offscreenContext) {
+    context.drawImage(image, -width / 2, -height / 2, width, height);
+    return;
+  }
+
+  offscreenContext.clearRect(0, 0, offscreen.width, offscreen.height);
+  offscreenContext.globalAlpha = 1;
+  offscreenContext.drawImage(image, 0, 0, offscreen.width, offscreen.height);
+
+  const imageData = offscreenContext.getImageData(0, 0, offscreen.width, offscreen.height);
+  for (let index = 3; index < imageData.data.length; index += 4) {
+    if (imageData.data[index] > 8) {
+      imageData.data[index] = 255;
+    } else {
+      imageData.data[index] = 0;
+    }
+  }
+  offscreenContext.putImageData(imageData, 0, 0);
+  context.drawImage(offscreen, -width / 2, -height / 2, width, height);
 }
 
 function drawStickers(
@@ -596,13 +652,7 @@ function drawStickers(
       if (image?.complete && image.naturalWidth > 0 && image.naturalHeight > 0) {
         context.translate(sticker.x, sticker.y);
         context.rotate((sticker.rotation * Math.PI) / 180);
-        context.drawImage(
-          image,
-          -renderSize.width / 2,
-          -renderSize.height / 2,
-          renderSize.width,
-          renderSize.height,
-        );
+        drawOpaqueImageSticker(context, image, renderSize.width, renderSize.height);
         if (sticker.border) {
           context.shadowColor = "transparent";
           context.strokeStyle = "#ffffff";
