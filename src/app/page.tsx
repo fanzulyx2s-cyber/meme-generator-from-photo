@@ -58,6 +58,11 @@ const faqs = [
     answer:
       "Yes. The meme preview can be downloaded as a PNG from the browser after you add your photo and text.",
   },
+  {
+    question: "How can I contact support?",
+    answer:
+      "If you have any questions about payments, refunds, or using MemePhoto AI, please contact us at support@memephotoai.com.",
+  },
 ];
 
 function UseCaseDecoration({ item }: { item: string }) {
@@ -179,6 +184,7 @@ export default function Home() {
                   Turn any photo into a meme in seconds
                 </h1>
                 <p className="mt-5 max-w-2xl text-lg leading-8 text-zinc-700">
+                  MemePhoto AI is a browser-based AI meme generator from photo.
                   Upload a photo, add top and bottom text, preview it with
                   Canvas, and download a PNG. No login, no database, no server
                   upload.
@@ -398,7 +404,23 @@ export default function Home() {
                         +
                       </span>
                     </summary>
-                    <p className="relative mt-3 leading-7 text-zinc-600">{faq.answer}</p>
+                    <p className="relative mt-3 leading-7 text-zinc-600">
+                      {faq.question === "How can I contact support?" ? (
+                        <>
+                          If you have any questions about payments, refunds, or
+                          using MemePhoto AI, please contact us at{" "}
+                          <a
+                            href="mailto:support@memephotoai.com"
+                            className="font-black text-zinc-950 underline decoration-[#ffde59] decoration-2 underline-offset-4"
+                          >
+                            support@memephotoai.com
+                          </a>
+                          .
+                        </>
+                      ) : (
+                        faq.answer
+                      )}
+                    </p>
                   </details>
                 ))}
               </div>

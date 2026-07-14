@@ -4,15 +4,27 @@ export default function ContactPage() {
   return (
     <SimplePage
       eyebrow="Contact"
-      title="Contact"
-      description="For questions about MemePhoto AI, support, or planned pricing, use the contact details below."
+      title="Contact MemePhoto AI"
+      description="Need help with MemePhoto AI? For questions about payments, refunds, or using our service, please contact us below."
     >
       <InfoCard title="Product contact">
         <p>
           MemePhoto AI is a lightweight browser-based meme maker for turning
-          photos into shareable reaction images. For product questions, please
-          contact the project owner through the channel where this website was
-          shared.
+          photos into shareable reaction images.
+        </p>
+      </InfoCard>
+      <InfoCard title="Contact email">
+        <p>
+          For questions about payments, refunds, or using our service, please
+          contact:
+        </p>
+        <p>
+          <a
+            href="mailto:support@memephotoai.com"
+            className="font-black text-zinc-950 underline decoration-[#ffde59] decoration-2 underline-offset-4"
+          >
+            support@memephotoai.com
+          </a>
         </p>
       </InfoCard>
       <InfoCard title="Support scope">

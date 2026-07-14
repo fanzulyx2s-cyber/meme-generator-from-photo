@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { CreatorCheckoutButton } from "@/components/creator-checkout-button";
 import { SimplePage } from "@/components/simple-page";
 
 const plans = [
@@ -22,21 +23,22 @@ const plans = [
     featured: false,
   },
   {
-    name: "Creator",
-    price: "Coming soon",
-    badge: "Planned",
+    name: "Creator Plan",
+    price: "$9",
+    priceNote: "One-time payment",
+    badge: "Available now",
     description:
-      "More tools for creators who make memes, reactions, and social content regularly.",
+      "For creators who want more templates, stickers and export options.",
     features: [
       "More caption presets",
       "More sticker packs",
-      "Watermark-free exports",
+      "No watermark export",
       "More output sizes",
       "Batch meme creation",
       "Saved editing presets",
     ],
-    href: "",
-    cta: "Coming soon",
+    href: "creem",
+    cta: "Buy Creator Plan",
     featured: true,
   },
   {
@@ -65,19 +67,19 @@ const faqs = [
       "Yes. The current browser-based meme maker can be used without an account or payment.",
   },
   {
-    question: "Are paid plans available today?",
+    question: "Is there a paid plan?",
     answer:
-      "Paid creator and team features are planned for the future. Pricing details will be shown clearly before any purchase.",
+      "Yes. MemePhoto AI Creator Plan is available for creators who need more templates, stickers and export options.",
+  },
+  {
+    question: "How can I purchase?",
+    answer:
+      "Click the Creator Plan button and complete your payment securely through Creem.",
   },
   {
     question: "Do you store uploaded photos?",
     answer:
       "No. Photos are processed locally in your browser for meme generation.",
-  },
-  {
-    question: "How will payments work?",
-    answer:
-      "If paid plans are introduced, payments will be processed securely by a payment provider. We do not store full payment card details on our servers.",
   },
 ];
 
@@ -86,7 +88,7 @@ export default function PricingPage() {
     <SimplePage
       eyebrow="Pricing"
       title="Simple pricing for fast meme creation"
-      description="Start with the free browser-based meme maker. Paid creator and team features are planned for future workflows."
+      description="Start with the free browser-based meme maker, or choose Creator Plan for more templates, stickers, and export options."
     >
       <div className="grid gap-4 md:grid-cols-3">
         {plans.map((plan) => (
@@ -105,6 +107,11 @@ export default function PricingPage() {
             </span>
             <h2 className="relative mt-6 text-2xl font-black">{plan.name}</h2>
             <p className="relative mt-4 text-4xl font-black">{plan.price}</p>
+            {"priceNote" in plan ? (
+              <p className="relative mt-2 text-sm font-black text-zinc-700">
+                {plan.priceNote}
+              </p>
+            ) : null}
             <p className="relative mt-4 min-h-20 text-sm font-semibold leading-6 text-zinc-600">
               {plan.description}
             </p>
@@ -118,7 +125,9 @@ export default function PricingPage() {
                 </li>
               ))}
             </ul>
-            {plan.href ? (
+            {plan.href === "creem" ? (
+              <CreatorCheckoutButton>{plan.cta}</CreatorCheckoutButton>
+            ) : plan.href ? (
               <Link
                 href={plan.href}
                 className="relative mt-6 inline-flex rounded-full bg-zinc-950 px-5 py-3 text-sm font-black text-white transition hover:-translate-y-0.5 hover:shadow-lg"
@@ -138,6 +147,19 @@ export default function PricingPage() {
         ))}
       </div>
 
+      <div className="rounded-[1.5rem] border border-black/10 bg-[#fffaf3] p-5 text-sm font-semibold leading-6 text-zinc-600">
+        <p className="font-black text-zinc-950">Questions about your purchase?</p>
+        <p>
+          Contact us at:{" "}
+          <a
+            href="mailto:support@memephotoai.com"
+            className="font-black text-zinc-950 underline decoration-[#ffde59] decoration-2 underline-offset-4"
+          >
+            support@memephotoai.com
+          </a>
+        </p>
+      </div>
+
       <section className="rounded-[2rem] border border-black/10 bg-[#fffaf3] p-6 shadow-sm">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
           <div>
@@ -147,8 +169,8 @@ export default function PricingPage() {
             <h2 className="mt-3 text-3xl font-black">Pricing questions</h2>
           </div>
           <p className="max-w-md text-sm font-semibold leading-6 text-zinc-600">
-            Clear answers about the free tool, planned paid features, and local
-            photo handling.
+            Clear answers about the free tool, Creator Plan, secure checkout,
+            and local photo handling.
           </p>
         </div>
         <div className="mt-6 grid gap-3 md:grid-cols-2">

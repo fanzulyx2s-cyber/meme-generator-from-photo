@@ -18,11 +18,19 @@ export function SiteFooter() {
         <div className="relative grid gap-8 md:grid-cols-[1.2fr_1fr] md:items-center">
           <div>
             <p className="text-sm font-black uppercase tracking-[0.2em] text-[#ffde59]">
-              AI Meme Generator from Photo
+              MemePhoto AI
             </p>
             <p className="mt-3 max-w-xl text-balance text-2xl font-black">
               A simple browser-based meme maker for photos. Your image stays on
               your device.
+            </p>
+            <p className="mt-4 text-sm font-semibold text-white/75">
+              <a
+                href="mailto:support@memephotoai.com"
+                className="transition hover:text-[#ffde59]"
+              >
+                support@memephotoai.com
+              </a>
             </p>
           </div>
 
@@ -37,6 +45,18 @@ export function SiteFooter() {
               </Link>
             ))}
           </div>
+        </div>
+        <div className="relative mt-6 flex flex-col gap-2 border-t border-white/10 pt-5 text-sm font-semibold text-white/70 sm:flex-row sm:items-center sm:justify-between">
+          <p>&copy; 2026 MemePhoto AI</p>
+          <p>
+            Contact:{" "}
+            <a
+              href="mailto:support@memephotoai.com"
+              className="text-white transition hover:text-[#ffde59]"
+            >
+              support@memephotoai.com
+            </a>
+          </p>
         </div>
       </div>
     </footer>

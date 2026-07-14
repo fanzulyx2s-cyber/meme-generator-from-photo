@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "AI Meme Generator from Photo",
+  title: "MemePhoto AI - AI Meme Generator from Photo",
   description:
-    "Create photo memes in your browser with local Canvas processing and PNG download.",
+    "MemePhoto AI helps you create photo memes in your browser with local Canvas processing and PNG download.",
 };
 
 export default function RootLayout({
