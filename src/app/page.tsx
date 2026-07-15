@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { CreatorLicensePanel } from "@/components/creator-license-panel";
 import { MemeGenerator } from "@/components/meme-generator";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
@@ -264,7 +265,9 @@ export default function Home() {
         </section>
 
         <div className="mx-auto grid max-w-7xl gap-14 px-4 py-8 sm:px-6 lg:px-8">
-          <MemeGenerator />
+          <MemeGenerator
+            afterEditorContent={<CreatorLicensePanel variant="compact" />}
+          />
 
           <section id="how-it-works" className="scroll-mt-28">
             <div className="mb-6 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">

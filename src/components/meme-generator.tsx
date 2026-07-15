@@ -3,11 +3,13 @@
 import {
   ChangeEvent,
   DragEvent as ReactDragEvent,
+  ReactNode,
   PointerEvent as ReactPointerEvent,
   useEffect,
   useRef,
   useState,
 } from "react";
+import { useCreatorLicense } from "@/hooks/use-creator-license";
 
 const canvasSize = 1000;
 
@@ -59,6 +61,18 @@ const maxTextScale = 2.2;
 const emojiBaseSize = 128;
 const imageBaseMaxSide = 210;
 const stickerDragMargin = 160;
+const watermarkText = "memephotoai.com";
+
+type MemeGeneratorProps = {
+  afterEditorContent?: ReactNode;
+};
+
+type CanvasBounds = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+};
 
 const outputRatios: Array<{
   id: OutputRatioId;
@@ -396,12 +410,113 @@ function drawWrappedText(
   context.restore();
 }
 
+function getTextLayerBox(layer: MemeTextLayer, text: string) {
+  const normalizedText = text.trim();
+  if (layer.vertical) {
+    const charCount = Math.max(1, normalizedText.replace(/\s+/g, "").length);
+    const fontSize = 72 * layer.scale;
+    const rowsPerColumn = Math.max(1, Math.floor(760 / (fontSize * 0.92)));
+    const columnCount = Math.ceil(charCount / rowsPerColumn);
+    const rowCount = Math.min(charCount, rowsPerColumn);
+    return {
+      width: Math.max(80, columnCount * fontSize * 0.95),
+      height: Math.max(120, rowCount * fontSize * 0.92),
+    };
+  }
+
+  return {
+    width: Math.min(900, Math.max(260, normalizedText.length * 28 * layer.scale)),
+    height: 150 * layer.scale,
+  };
+}
+
 function drawFrame(context: CanvasRenderingContext2D, canvasHeight: number) {
   context.save();
   context.strokeStyle = "#111111";
   context.lineWidth = 24;
   context.lineJoin = "round";
   context.strokeRect(18, 18, canvasSize - 36, canvasHeight - 36);
+  context.restore();
+}
+
+function drawSignatureWatermark(
+  context: CanvasRenderingContext2D,
+  imageBounds: CanvasBounds,
+  bottomTextBounds?: CanvasBounds,
+) {
+  const shortEdge = Math.min(imageBounds.width, imageBounds.height);
+  const scriptFontSize = Math.max(18, Math.min(34, shortEdge * 0.04));
+  const domainFontSize = Math.max(10, Math.min(18, scriptFontSize * 0.53));
+  const lineGap = scriptFontSize * 0.22;
+  const primaryColor = "rgba(255, 252, 244, 0.74)";
+  const secondaryColor = "rgba(255, 252, 244, 0.84)";
+  const strokeColor = "rgba(30, 25, 20, 0.22)";
+  const shadowColor = "rgba(0, 0, 0, 0.20)";
+  const rightInset = imageBounds.width * 0.08;
+  const bottomInset = imageBounds.height * 0.17;
+  const totalHeight = scriptFontSize + lineGap + domainFontSize;
+
+  context.save();
+  context.font = `600 ${scriptFontSize}px "Segoe Script", "Brush Script MT", "Lucida Handwriting", cursive`;
+  context.textAlign = "right";
+  context.textBaseline = "top";
+  context.lineJoin = "round";
+
+  const signatureText = "MemePhoto AI";
+  const scriptTextWidth = context.measureText(signatureText).width;
+  context.font = `500 ${domainFontSize}px Arial, sans-serif`;
+  const domainTextWidth = context.measureText(watermarkText).width;
+  const watermarkWidth = Math.max(scriptTextWidth, domainTextWidth);
+  const watermarkRight = imageBounds.x + imageBounds.width - rightInset;
+  const minimumTop = imageBounds.y + imageBounds.height * 0.08;
+  const maximumTop = imageBounds.y + imageBounds.height - bottomInset - totalHeight;
+  let watermarkTop = maximumTop;
+
+  if (
+    bottomTextBounds &&
+    watermarkRight - watermarkWidth < bottomTextBounds.x + bottomTextBounds.width &&
+    watermarkRight > bottomTextBounds.x &&
+    watermarkTop < bottomTextBounds.y + bottomTextBounds.height &&
+    watermarkTop + totalHeight > bottomTextBounds.y
+  ) {
+    watermarkTop =
+      bottomTextBounds.y - totalHeight - scriptFontSize * 0.55;
+  }
+
+  watermarkTop = Math.min(
+    Math.max(watermarkTop, minimumTop),
+    Math.max(minimumTop, maximumTop),
+  );
+
+  // Draw a photography-style MemePhoto AI signature watermark.
+  context.shadowColor = shadowColor;
+  context.shadowBlur = Math.max(1, scriptFontSize * 0.1);
+  context.shadowOffsetX = 0;
+  context.shadowOffsetY = scriptFontSize * 0.04;
+  context.lineWidth = Math.max(0.8, scriptFontSize * 0.03);
+  context.strokeStyle = strokeColor;
+  context.fillStyle = primaryColor;
+  context.font = `600 ${scriptFontSize}px "Segoe Script", "Brush Script MT", "Lucida Handwriting", cursive`;
+  context.strokeText(signatureText, watermarkRight, watermarkTop);
+  context.fillText(signatureText, watermarkRight, watermarkTop);
+
+  const domainY = watermarkTop + scriptFontSize + lineGap;
+  context.font = `500 ${domainFontSize}px Arial, sans-serif`;
+  context.lineWidth = Math.max(0.6, domainFontSize * 0.045);
+  context.strokeStyle = strokeColor;
+  context.fillStyle = secondaryColor;
+  context.strokeText(watermarkText, watermarkRight, domainY);
+  context.fillText(watermarkText, watermarkRight, domainY);
+
+  const lineWidth = Math.min(watermarkWidth * 0.55, imageBounds.width * 0.16);
+  if (lineWidth > domainFontSize * 3) {
+    context.beginPath();
+    context.strokeStyle = "rgba(255, 252, 244, 0.34)";
+    context.lineWidth = Math.max(0.7, domainFontSize * 0.055);
+    context.moveTo(watermarkRight - lineWidth, domainY - lineGap * 0.45);
+    context.lineTo(watermarkRight, domainY - lineGap * 0.45);
+    context.stroke();
+  }
   context.restore();
 }
 
@@ -671,7 +786,8 @@ function drawStickers(
   });
 }
 
-export function MemeGenerator() {
+export function MemeGenerator({ afterEditorContent }: MemeGeneratorProps) {
+  const { isCreator } = useCreatorLicense();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const dragRef = useRef<{ id: number; offsetX: number; offsetY: number } | null>(
     null,
@@ -805,7 +921,21 @@ export function MemeGenerator() {
     context.fillStyle = "#f8efe2";
     context.fillRect(0, 0, canvasSize, canvasHeight);
 
-    const drawFinalLayers = () => {
+    const getLayerBounds = (layer: MemeTextLayer, text: string) => {
+      if (!text.trim()) {
+        return undefined;
+      }
+
+      const box = getTextLayerBox(layer, text);
+      return {
+        x: layer.x - box.width / 2,
+        y: layer.y - box.height / 2,
+        width: box.width,
+        height: box.height,
+      };
+    };
+
+    const drawFinalLayers = (imageBounds: CanvasBounds) => {
       if (!textAboveStickers) {
         drawWrappedText(context, topText, textLayers.top);
         drawWrappedText(context, bottomText, textLayers.bottom, true);
@@ -818,18 +948,37 @@ export function MemeGenerator() {
       if (frameEnabled) {
         drawFrame(context, canvasHeight);
       }
+      if (!isCreator) {
+        drawSignatureWatermark(
+          context,
+          imageBounds,
+          getLayerBounds(textLayers.bottom, bottomText),
+        );
+      }
     };
 
     if (!imageUrl) {
+      const placeholderBounds = {
+        x: 72,
+        y: 72,
+        width: canvasSize - 144,
+        height: canvasHeight - 144,
+      };
+
       context.fillStyle = "#fff7e8";
-      context.fillRect(72, 72, canvasSize - 144, canvasHeight - 144);
+      context.fillRect(
+        placeholderBounds.x,
+        placeholderBounds.y,
+        placeholderBounds.width,
+        placeholderBounds.height,
+      );
       context.fillStyle = "#171717";
       context.font = "900 54px system-ui, Arial, sans-serif";
       context.textAlign = "center";
       context.fillText("UPLOAD A PHOTO", canvasSize / 2, canvasHeight / 2 - 18);
       context.font = "700 30px system-ui, Arial, sans-serif";
       context.fillText("Then add your meme text", canvasSize / 2, canvasHeight / 2 + 38);
-      drawFinalLayers();
+      drawFinalLayers(placeholderBounds);
       return;
     }
 
@@ -843,17 +992,24 @@ export function MemeGenerator() {
       const height = image.naturalHeight * scale;
       const x = (canvasSize - width) / 2;
       const y = (canvasHeight - height) / 2;
+      const visibleImageBounds = {
+        x: Math.max(0, x),
+        y: Math.max(0, y),
+        width: Math.min(canvasSize, x + width) - Math.max(0, x),
+        height: Math.min(canvasHeight, y + height) - Math.max(0, y),
+      };
 
       context.drawImage(image, x, y, width, height);
       context.fillStyle = "rgba(0, 0, 0, 0.08)";
       context.fillRect(0, 0, canvasSize, 150);
       context.fillRect(0, canvasHeight - 170, canvasSize, 170);
-      drawFinalLayers();
+      drawFinalLayers(visibleImageBounds);
     };
     image.src = imageUrl;
   }, [
     frameEnabled,
     imageCacheVersion,
+    isCreator,
     imageUrl,
     canvasHeight,
     stickers,
@@ -894,26 +1050,6 @@ export function MemeGenerator() {
       sticker.y < 0 ||
       sticker.y > canvasHeight
     );
-  }
-
-  function getTextLayerBox(layer: MemeTextLayer, text: string) {
-    const normalizedText = text.trim();
-    if (layer.vertical) {
-      const charCount = Math.max(1, normalizedText.replace(/\s+/g, "").length);
-      const fontSize = 72 * layer.scale;
-      const rowsPerColumn = Math.max(1, Math.floor(760 / (fontSize * 0.92)));
-      const columnCount = Math.ceil(charCount / rowsPerColumn);
-      const rowCount = Math.min(charCount, rowsPerColumn);
-      return {
-        width: Math.max(80, columnCount * fontSize * 0.95),
-        height: Math.max(120, rowCount * fontSize * 0.92),
-      };
-    }
-
-    return {
-      width: Math.min(900, Math.max(260, normalizedText.length * 28 * layer.scale)),
-      height: 150 * layer.scale,
-    };
   }
 
   function findTextLayerAtPoint(x: number, y: number) {
@@ -1513,12 +1649,13 @@ export function MemeGenerator() {
   }
 
   function applyCaptionPreset(presetId: string) {
-    setSelectedPresetId(presetId);
     const preset = captionPresets.find((item) => item.id === presetId);
     if (!preset) {
+      setSelectedPresetId("");
       return;
     }
 
+    setSelectedPresetId(presetId);
     setTopText(preset.top);
     setBottomText(preset.bottom);
   }
@@ -1719,7 +1856,7 @@ export function MemeGenerator() {
                     </span>
                   </span>
                   <span className="w-fit rounded-full bg-[#ffde59] px-3 py-1 text-xs font-black uppercase tracking-wide text-zinc-950">
-                    30 presets
+                    {captionPresets.length} PRESETS
                   </span>
                 </span>
                 <select
@@ -2167,6 +2304,10 @@ export function MemeGenerator() {
             </div>
           </div>
         </div>
+
+        {afterEditorContent ? (
+          <div className="mt-5">{afterEditorContent}</div>
+        ) : null}
 
         <div className="mt-5 rounded-[2rem] border border-black/10 bg-gradient-to-br from-white via-[#fffaf3] to-[#f5fbff] p-5 shadow-sm">
           <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">

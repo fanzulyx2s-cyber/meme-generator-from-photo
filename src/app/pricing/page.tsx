@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { CreatorCheckoutButton } from "@/components/creator-checkout-button";
+import { CreatorLicensePanel } from "@/components/creator-license-panel";
 import { SimplePage } from "@/components/simple-page";
 
 const plans = [
@@ -146,6 +147,8 @@ export default function PricingPage() {
           </article>
         ))}
       </div>
+
+      <CreatorLicensePanel variant="full" />
 
       <div className="rounded-[1.5rem] border border-black/10 bg-[#fffaf3] p-5 text-sm font-semibold leading-6 text-zinc-600">
         <p className="font-black text-zinc-950">Questions about your purchase?</p>

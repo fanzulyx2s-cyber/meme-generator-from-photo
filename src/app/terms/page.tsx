@@ -21,11 +21,45 @@ export default function TermsPage() {
           website for meme generation.
         </p>
       </InfoCard>
+      <InfoCard title="Acceptable Use and Prohibited Content">
+        <p>
+          Users may not use MemePhoto AI to create, edit, upload, or distribute
+          content that:
+        </p>
+        <ul className="list-disc space-y-2 pl-5">
+          <li>
+            contains sexually explicit, pornographic, adult, or NSFW material;
+          </li>
+          <li>
+            depicts nudity or sexual content intended for explicit purposes;
+          </li>
+          <li>
+            involves sexual content featuring minors or any non-consensual
+            intimate content;
+          </li>
+          <li>
+            promotes violence, hate speech, harassment, or illegal activities;
+          </li>
+          <li>
+            infringes copyrights, trademarks, privacy rights, or other
+            third-party rights;
+          </li>
+          <li>
+            impersonates individuals or creates misleading or fraudulent
+            content.
+          </li>
+        </ul>
+        <p>
+          MemePhoto AI reserves the right to restrict or terminate access for
+          users who violate these requirements.
+        </p>
+      </InfoCard>
       <InfoCard title="Feature availability">
         <p>
-          The free browser-based meme maker is available now. Creator and Team
-          features are planned for future workflows, and any paid terms will be
-          shown clearly before purchase.
+          MemePhoto AI may offer free and paid access options, including a
+          one-time Creator Plan. Current pricing, availability, and included
+          features are described on the Pricing page. Features may be updated or
+          changed as the service develops.
         </p>
       </InfoCard>
     </SimplePage>
