@@ -439,6 +439,52 @@ function drawFrame(context: CanvasRenderingContext2D, canvasHeight: number) {
   context.restore();
 }
 
+function drawLineCameraIcon(
+  context: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+) {
+  const strokeWidth = Math.max(1, height * 0.055);
+  const bodyY = y + height * 0.26;
+  const bodyHeight = height * 0.62;
+  const bodyRadius = height * 0.13;
+  const lensX = x + width * 0.52;
+  const lensY = bodyY + bodyHeight * 0.53;
+  const lensRadius = height * 0.2;
+  const topWidth = width * 0.34;
+  const topHeight = height * 0.2;
+  const topX = x + width * 0.16;
+  const topY = y + height * 0.13;
+
+  context.save();
+  context.lineCap = "round";
+  context.lineJoin = "round";
+  context.lineWidth = strokeWidth;
+
+  context.beginPath();
+  context.roundRect(x, bodyY, width, bodyHeight, bodyRadius);
+  context.stroke();
+
+  context.beginPath();
+  context.roundRect(topX, topY, topWidth, topHeight, topHeight * 0.45);
+  context.stroke();
+
+  context.beginPath();
+  context.arc(lensX, lensY, lensRadius, 0, Math.PI * 2);
+  context.stroke();
+
+  context.beginPath();
+  context.arc(lensX, lensY, lensRadius * 0.48, 0, Math.PI * 2);
+  context.stroke();
+
+  context.beginPath();
+  context.arc(x + width * 0.82, bodyY + bodyHeight * 0.28, height * 0.045, 0, Math.PI * 2);
+  context.stroke();
+  context.restore();
+}
+
 function drawSignatureWatermark(
   context: CanvasRenderingContext2D,
   imageBounds: CanvasBounds,
@@ -446,19 +492,23 @@ function drawSignatureWatermark(
 ) {
   const shortEdge = Math.min(imageBounds.width, imageBounds.height);
   const scriptFontSize = Math.max(18, Math.min(34, shortEdge * 0.04));
-  const domainFontSize = Math.max(10, Math.min(18, scriptFontSize * 0.53));
+  const domainFontSize = Math.max(11, Math.min(19, scriptFontSize * 0.59));
   const lineGap = scriptFontSize * 0.22;
-  const primaryColor = "rgba(255, 252, 244, 0.74)";
-  const secondaryColor = "rgba(255, 252, 244, 0.84)";
-  const strokeColor = "rgba(30, 25, 20, 0.22)";
-  const shadowColor = "rgba(0, 0, 0, 0.20)";
+  const primaryColor = "rgba(255, 255, 255, 0.88)";
+  const secondaryColor = "rgba(255, 255, 255, 0.94)";
+  const strokeColor = "rgba(0, 0, 0, 0.28)";
+  const shadowColor = "rgba(0, 0, 0, 0.24)";
+  const cameraHeight = scriptFontSize * 1.08;
+  const cameraWidth = cameraHeight * 1.28;
+  const cameraGap = scriptFontSize * 0.28;
   const rightInset = imageBounds.width * 0.08;
-  const bottomInset = imageBounds.height * 0.17;
-  const totalHeight = scriptFontSize + lineGap + domainFontSize;
+  const bottomInset = imageBounds.height * 0.21;
+  const firstRowHeight = Math.max(scriptFontSize, cameraHeight);
+  const totalHeight = firstRowHeight + lineGap + domainFontSize;
 
   context.save();
   context.font = `600 ${scriptFontSize}px "Segoe Script", "Brush Script MT", "Lucida Handwriting", cursive`;
-  context.textAlign = "right";
+  context.textAlign = "left";
   context.textBaseline = "top";
   context.lineJoin = "round";
 
@@ -466,8 +516,11 @@ function drawSignatureWatermark(
   const scriptTextWidth = context.measureText(signatureText).width;
   context.font = `500 ${domainFontSize}px Arial, sans-serif`;
   const domainTextWidth = context.measureText(watermarkText).width;
-  const watermarkWidth = Math.max(scriptTextWidth, domainTextWidth);
+  const firstRowWidth = cameraWidth + cameraGap + scriptTextWidth;
+  const watermarkWidth = Math.max(firstRowWidth, cameraWidth + cameraGap + domainTextWidth);
   const watermarkRight = imageBounds.x + imageBounds.width - rightInset;
+  const watermarkLeft = watermarkRight - watermarkWidth;
+  const textLeft = watermarkLeft + cameraWidth + cameraGap;
   const minimumTop = imageBounds.y + imageBounds.height * 0.08;
   const maximumTop = imageBounds.y + imageBounds.height - bottomInset - totalHeight;
   let watermarkTop = maximumTop;
@@ -496,25 +549,43 @@ function drawSignatureWatermark(
   context.lineWidth = Math.max(0.8, scriptFontSize * 0.03);
   context.strokeStyle = strokeColor;
   context.fillStyle = primaryColor;
-  context.font = `600 ${scriptFontSize}px "Segoe Script", "Brush Script MT", "Lucida Handwriting", cursive`;
-  context.strokeText(signatureText, watermarkRight, watermarkTop);
-  context.fillText(signatureText, watermarkRight, watermarkTop);
+  context.strokeStyle = primaryColor;
+  drawLineCameraIcon(
+    context,
+    watermarkLeft,
+    watermarkTop + (firstRowHeight - cameraHeight) / 2,
+    cameraWidth,
+    cameraHeight,
+  );
 
-  const domainY = watermarkTop + scriptFontSize + lineGap;
+  context.strokeStyle = strokeColor;
+  context.font = `600 ${scriptFontSize}px "Segoe Script", "Brush Script MT", "Lucida Handwriting", cursive`;
+  context.strokeText(
+    signatureText,
+    textLeft,
+    watermarkTop + (firstRowHeight - scriptFontSize) / 2,
+  );
+  context.fillText(
+    signatureText,
+    textLeft,
+    watermarkTop + (firstRowHeight - scriptFontSize) / 2,
+  );
+
+  const domainY = watermarkTop + firstRowHeight + lineGap;
   context.font = `500 ${domainFontSize}px Arial, sans-serif`;
   context.lineWidth = Math.max(0.6, domainFontSize * 0.045);
   context.strokeStyle = strokeColor;
   context.fillStyle = secondaryColor;
-  context.strokeText(watermarkText, watermarkRight, domainY);
-  context.fillText(watermarkText, watermarkRight, domainY);
+  context.strokeText(watermarkText, textLeft, domainY);
+  context.fillText(watermarkText, textLeft, domainY);
 
-  const lineWidth = Math.min(watermarkWidth * 0.55, imageBounds.width * 0.16);
+  const lineWidth = Math.min(scriptTextWidth * 0.55, imageBounds.width * 0.16);
   if (lineWidth > domainFontSize * 3) {
     context.beginPath();
     context.strokeStyle = "rgba(255, 252, 244, 0.34)";
     context.lineWidth = Math.max(0.7, domainFontSize * 0.055);
-    context.moveTo(watermarkRight - lineWidth, domainY - lineGap * 0.45);
-    context.lineTo(watermarkRight, domainY - lineGap * 0.45);
+    context.moveTo(textLeft, domainY - lineGap * 0.45);
+    context.lineTo(textLeft + lineWidth, domainY - lineGap * 0.45);
     context.stroke();
   }
   context.restore();
