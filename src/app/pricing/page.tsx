@@ -9,55 +9,36 @@ const plans = [
     price: "$0",
     badge: "Available now",
     description:
-      "Create and download simple photo memes directly in your browser.",
+      "Create and export memes with a MemePhoto AI watermark.",
     features: [
-      "Upload photos locally",
+      "Upload your own photos",
       "Add top and bottom captions",
-      "Add emoji stickers",
-      "Add image or logo stickers",
-      "Choose meme frame on or off",
-      "Download PNG",
-      "No account required",
+      "Use caption presets",
+      "Add emoji and image stickers",
+      "Choose 1:1, 4:5, or 9:16 formats",
+      "Export PNG with a MemePhoto AI watermark",
     ],
     href: "/#generator",
-    cta: "Try free demo",
+    cta: "Start creating",
     featured: false,
   },
   {
     name: "Creator Plan",
-    price: "$9",
-    priceNote: "One-time payment",
+    price: "$9 one-time",
     badge: "Available now",
     description:
-      "For creators who want more templates, stickers and export options.",
+      "Remove the MemePhoto AI watermark from previews and PNG exports.",
     features: [
-      "More caption presets",
-      "More sticker packs",
-      "No watermark export",
-      "More output sizes",
-      "Batch meme creation",
-      "Saved editing presets",
+      "Everything in Free Demo",
+      "Watermark-free live preview",
+      "Watermark-free PNG exports",
+      "One-time purchase, no subscription",
+      "License does not expire",
+      "Activate on up to 3 browsers",
     ],
     href: "creem",
     cta: "Buy Creator Plan",
     featured: true,
-  },
-  {
-    name: "Team",
-    price: "Contact",
-    badge: "Planned",
-    description:
-      "For small teams, creators, and brands that need lightweight visual meme workflows.",
-    features: [
-      "Team-friendly meme templates",
-      "Brand/social content workflows",
-      "Custom sticker sets",
-      "Priority support",
-      "Future paid workspace options",
-    ],
-    href: "/contact",
-    cta: "Contact us",
-    featured: false,
   },
 ];
 
@@ -70,7 +51,7 @@ const faqs = [
   {
     question: "Is there a paid plan?",
     answer:
-      "Yes. MemePhoto AI Creator Plan is available for creators who need more templates, stickers and export options.",
+      "Yes. Creator Plan removes the MemePhoto AI watermark from live previews and PNG exports.",
   },
   {
     question: "How can I purchase?",
@@ -80,7 +61,7 @@ const faqs = [
   {
     question: "Do you store uploaded photos?",
     answer:
-      "No. Photos are processed locally in your browser for meme generation.",
+      "No. Photos are processed locally in your browser for meme creation.",
   },
 ];
 
@@ -89,9 +70,9 @@ export default function PricingPage() {
     <SimplePage
       eyebrow="Pricing"
       title="Simple pricing for fast meme creation"
-      description="Start with the free browser-based meme maker, or choose Creator Plan for more templates, stickers, and export options."
+      description="Start with the free browser-based meme maker, or choose Creator Plan for watermark-free previews and PNG exports."
     >
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2">
         {plans.map((plan) => (
           <article
             key={plan.name}
@@ -108,11 +89,6 @@ export default function PricingPage() {
             </span>
             <h2 className="relative mt-6 text-2xl font-black">{plan.name}</h2>
             <p className="relative mt-4 text-4xl font-black">{plan.price}</p>
-            {"priceNote" in plan ? (
-              <p className="relative mt-2 text-sm font-black text-zinc-700">
-                {plan.priceNote}
-              </p>
-            ) : null}
             <p className="relative mt-4 min-h-20 text-sm font-semibold leading-6 text-zinc-600">
               {plan.description}
             </p>

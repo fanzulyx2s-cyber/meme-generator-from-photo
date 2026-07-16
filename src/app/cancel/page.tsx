@@ -18,8 +18,8 @@ export default function CancelPage() {
               Payment Cancelled
             </h1>
             <p className="relative mt-5 max-w-2xl text-lg font-semibold leading-8 text-zinc-600">
-              Your payment was cancelled. You can return anytime and continue
-              creating memes.
+              Your payment was not completed, and no Creator access was
+              activated. You can return anytime and continue creating memes.
             </p>
             <Link
               href="/pricing"

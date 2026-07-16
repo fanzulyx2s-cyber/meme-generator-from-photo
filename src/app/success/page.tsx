@@ -15,11 +15,22 @@ export default function SuccessPage() {
               MemePhoto AI
             </p>
             <h1 className="relative mt-6 text-balance text-4xl font-black tracking-tight md:text-6xl">
-              Payment Successful!
+              Payment completed
             </h1>
             <p className="relative mt-5 max-w-2xl text-lg font-semibold leading-8 text-zinc-600">
-              Thank you for your purchase. Your Creator Plan access will be
-              available shortly.
+              Thank you for your purchase. Check your purchase email for your
+              License Key, then enter it in the Creator License panel to
+              activate watermark-free exports on this browser.
+            </p>
+            <p className="relative mt-4 max-w-2xl text-sm font-semibold leading-6 text-zinc-600">
+              Need help? Contact{" "}
+              <a
+                href="mailto:support@memephotoai.com"
+                className="font-black text-zinc-950 underline decoration-[#ffde59] decoration-2 underline-offset-4"
+              >
+                support@memephotoai.com
+              </a>
+              .
             </p>
             <Link
               href="/"

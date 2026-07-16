@@ -63,7 +63,8 @@ export function CreatorLicensePanel({
             </p>
             <h2 className={titleClassName}>Creator Plan Active</h2>
             <p className="mt-3 max-w-2xl text-sm font-semibold leading-6 text-zinc-600">
-              This browser is activated for MemePhoto AI Creator features.
+              This browser is activated for watermark-free live previews and
+              PNG exports.
             </p>
             {activation !== null && activationLimit !== null ? (
               <p className="mt-3 text-sm font-black text-zinc-950">
@@ -105,8 +106,12 @@ export function CreatorLicensePanel({
           <h2 className={titleClassName}>Unlock Creator Plan</h2>
           <p className="mt-3 text-sm font-semibold leading-6 text-zinc-600">
             {isCompact
-              ? "Already purchased? Enter your Creem license key to activate Creator features on this browser."
-              : "Already purchased? Enter the license key included in your Creem receipt to activate Creator features on this browser."}
+              ? "Already purchased? Enter the license key sent in your Creem purchase email to remove the watermark on this browser."
+              : "Already purchased? Enter the license key sent in your Creem purchase email to remove the watermark on this browser."}
+          </p>
+          <p className="mt-2 text-xs font-semibold leading-5 text-zinc-500">
+            One-time purchase. No recurring subscription. One license can be
+            activated on up to 3 browsers.
           </p>
           {status === "validating" ? (
             <p className="mt-3 text-sm font-black text-zinc-700">

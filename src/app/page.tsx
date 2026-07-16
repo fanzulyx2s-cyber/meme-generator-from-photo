@@ -34,8 +34,7 @@ const useCases = [
 
 const pricingStyles: Record<string, string> = {
   "Free Demo": "from-[#fff7c2] via-[#fff7e8] to-white",
-  Creator: "from-[#ffd6e7] via-[#fff0a8] to-[#dff7ff]",
-  Team: "from-[#dff7ff] via-[#f7fbff] to-white",
+  "Creator Plan": "from-[#ffd6e7] via-[#fff0a8] to-[#dff7ff]",
 };
 
 const faqs = [
@@ -185,10 +184,9 @@ export default function Home() {
                   Turn any photo into a meme in seconds
                 </h1>
                 <p className="mt-5 max-w-2xl text-lg leading-8 text-zinc-700">
-                  MemePhoto AI is a browser-based AI meme generator from photo.
-                  Upload a photo, add top and bottom text, preview it with
-                  Canvas, and download a PNG. No login, no database, no server
-                  upload.
+                  MemePhoto AI is a browser-based photo meme maker. Upload a
+                  photo, add top and bottom text, preview it with Canvas, and
+                  download a PNG. No login, no database, no server upload.
                 </p>
               </div>
 
@@ -342,8 +340,8 @@ export default function Home() {
           </section>
 
           <section>
-            <div className="grid gap-4 rounded-[2.5rem] border border-black/10 bg-white p-5 shadow-sm md:grid-cols-3 md:p-8">
-              <div className="md:col-span-3">
+            <div className="grid gap-4 rounded-[2.5rem] border border-black/10 bg-white p-5 shadow-sm md:grid-cols-2 md:p-8">
+              <div className="md:col-span-2">
                 <p className="w-fit rounded-full bg-zinc-950 px-4 py-2 text-xs font-black uppercase tracking-[0.18em] text-white">
                   Pricing
                 </p>
@@ -351,14 +349,13 @@ export default function Home() {
                   Simple pricing
                 </h2>
                 <p className="mt-4 max-w-3xl text-base leading-7 text-zinc-600">
-                  Paid plans will unlock watermark-free downloads, more styles,
-                  and batch meme creation.
+                  Use the free editor with a MemePhoto AI watermark, or choose
+                  Creator Plan for watermark-free previews and PNG exports.
                 </p>
               </div>
               {[
-                ["Free Demo", "$0", "Create and download PNG memes locally."],
-                ["Creator", "Coming soon", "More styles and faster workflows planned."],
-                ["Team", "Contact", "For lightweight social and brand workflows."],
+                ["Free Demo", "$0", "Create and export PNG memes with a MemePhoto AI watermark."],
+                ["Creator Plan", "$9 one-time", "Remove the watermark from live previews and PNG exports."],
               ].map(([name, price, text]) => (
                 <article
                   key={name}
@@ -373,10 +370,10 @@ export default function Home() {
                   <p className="relative mt-4 text-4xl font-black">{price}</p>
                   <p className="relative mt-4 min-h-16 leading-7 text-zinc-600">{text}</p>
                   <Link
-                    href={name === "Team" ? "/contact" : "/#generator"}
+                    href={name === "Creator Plan" ? "/pricing" : "/#generator"}
                     className="relative mt-6 inline-flex rounded-full bg-zinc-950 px-5 py-3 text-sm font-black text-white"
                   >
-                    {name === "Team" ? "Contact" : "Try free"}
+                    {name === "Creator Plan" ? "View Creator Plan" : "Start creating"}
                   </Link>
                 </article>
               ))}
