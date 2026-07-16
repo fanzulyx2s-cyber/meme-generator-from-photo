@@ -1,32 +1,37 @@
 import { InfoCard, SimplePage } from "@/components/simple-page";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Refund Policy | MemePhoto AI",
+  description:
+    "Learn how refund requests work for the MemePhoto AI Creator Plan, including the 14-day request window and Creem processing.",
+};
 
 export default function RefundPage() {
   return (
     <SimplePage
       eyebrow="Refund Policy"
       title="Refund Policy"
-      description="Last updated: July 15, 2026"
+      description="Last updated: July 17, 2026"
     >
-      <InfoCard title="Overview">
+      <InfoCard title="Current Paid Product">
         <p>
-          MemePhoto AI offers a one-time Creator Plan priced at $9 USD.
-          Payments are processed securely by Creem, our merchant of record.
+          MemePhoto AI offers a Creator Plan as a $9 one-time purchase. It is
+          not a subscription.
         </p>
         <p>
-          We want customers to have a fair opportunity to report purchase
-          problems and request a refund when appropriate. This Refund Policy
-          explains when a refund may be available and how to submit a request.
+          Payments are processed by Creem. This Refund Policy explains how
+          customers can request a refund when appropriate.
         </p>
       </InfoCard>
 
-      <InfoCard title="Refund Request Period">
+      <InfoCard title="Refund Request Window">
         <p>
-          Refund requests should normally be submitted within 14 calendar days
-          of the original purchase date.
+          Refund requests must be submitted within 14 days after purchase.
         </p>
         <p>
-          Requests submitted after this period may still be considered when
-          required by applicable law or when exceptional circumstances exist.
+          This policy does not limit any consumer rights that cannot legally be
+          excluded under applicable law.
         </p>
       </InfoCard>
 
@@ -112,7 +117,8 @@ export default function RefundPage() {
         </ul>
         <p>
           For security, customers should not send complete payment card numbers,
-          passwords, or other sensitive financial information by email.
+          passwords, full License Keys, or other sensitive financial information
+          by email or public channels.
         </p>
       </InfoCard>
 
@@ -123,14 +129,21 @@ export default function RefundPage() {
         </p>
         <p>
           Approved refunds are processed through Creem and returned to the
-          original payment method. Depending on the circumstances, a refund may
-          be full or partial.
+          original payment method when available. Approval is not guaranteed for
+          every request.
         </p>
         <p>
           The time required for the refunded amount to appear may depend on
           Creem, the payment method, the customer&apos;s bank, and other payment
           providers. MemePhoto AI does not guarantee an exact bank processing
           time.
+        </p>
+      </InfoCard>
+
+      <InfoCard title="Free Demo">
+        <p>
+          The Free Demo does not create a payment, so there is no purchase
+          amount to refund for free use.
         </p>
       </InfoCard>
 

@@ -1,11 +1,18 @@
 import { InfoCard, SimplePage } from "@/components/simple-page";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Privacy Policy | MemePhoto AI",
+  description:
+    "Learn how MemePhoto AI handles local photo processing, Creator license activation, payments through Creem, and support communications.",
+};
 
 export default function PrivacyPage() {
   return (
     <SimplePage
       eyebrow="Privacy Policy"
       title="Privacy Policy"
-      description="Last updated: July 15, 2026"
+      description="Last updated: July 17, 2026"
     >
       <InfoCard title="Introduction">
         <p>
@@ -19,22 +26,51 @@ export default function PrivacyPage() {
         </p>
       </InfoCard>
 
-      <InfoCard title="Images and Content Processed in the Browser">
+      <InfoCard title="Local Photo Processing">
         <p>
-          Images and other editing content selected by users are processed
-          locally in the user&apos;s browser for the current editing and export
-          workflow. MemePhoto AI does not currently upload these images to its
-          own servers for meme generation or PNG export.
+          Photos selected by users are processed locally in the browser using
+          Canvas. Photos are not uploaded to or stored by MemePhoto AI for meme
+          creation.
         </p>
         <p>
           Users may add photos, text, emoji, logos, and image stickers in the
-          editor. Meme images are generated locally in the browser using
-          client-side Canvas technology, and exported PNG files are saved
-          directly by the user to their own device.
+          editor. Preview images and exported PNG files are created in the
+          browser and saved directly by the user to their own device.
         </p>
         <p>
           Users are responsible for ensuring that the images and content they
           use with MemePhoto AI are lawful for them to use.
+        </p>
+      </InfoCard>
+
+      <InfoCard title="Account-Free Use">
+        <p>
+          MemePhoto AI currently works without requiring users to create an
+          account. The website does not build ordinary user profiles or store
+          user photos for meme creation.
+        </p>
+        <p>
+          Some information may still be processed when users contact support,
+          make a purchase, activate a license, or interact with hosting,
+          security, or payment services.
+        </p>
+      </InfoCard>
+
+      <InfoCard title="Creator License Data">
+        <p>
+          A Creator Plan License Key and browser activation identifier may be
+          saved locally in the user&apos;s browser so that Creator access can be
+          verified on that browser.
+        </p>
+        <p>
+          When a user activates, validates, or deactivates a License Key,
+          necessary license information is sent to Creem&apos;s License API to
+          confirm the purchase and manage browser activations.
+        </p>
+        <p>
+          Users should keep their License Key private and should not send
+          complete payment card details, passwords, or unnecessary sensitive
+          information to support.
         </p>
       </InfoCard>
 
@@ -66,9 +102,10 @@ export default function PrivacyPage() {
 
       <InfoCard title="Payments and Creem">
         <p>
-          MemePhoto AI offers a one-time Creator Plan. Payments for the Creator
-          Plan are processed by Creem. MemePhoto AI does not store complete
-          payment card numbers.
+          MemePhoto AI offers a Creator Plan that is currently available as a
+          one-time purchase. Payments for the Creator Plan are processed by
+          Creem. MemePhoto AI does not collect or store complete payment card
+          details.
         </p>
         <p>
           Creem may collect information needed to process payments, such as
@@ -124,7 +161,7 @@ export default function PrivacyPage() {
         <p>Information may be used to:</p>
         <ul className="list-disc space-y-2 pl-5">
           <li>operate, maintain, and secure the website;</li>
-          <li>provide purchased access or benefits;</li>
+          <li>provide and verify Creator Plan access;</li>
           <li>confirm and manage transactions;</li>
           <li>respond to support and refund requests;</li>
           <li>investigate errors, abuse, fraud, and security incidents;</li>

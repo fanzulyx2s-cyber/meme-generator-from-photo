@@ -4,7 +4,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "MemePhoto AI - Browser-Based Photo Meme Maker",
   description:
-    "MemePhoto AI helps you create photo memes in your browser with local Canvas processing and PNG download.",
+    "Create memes from your photos in your browser. Add captions, emojis, and image stickers, choose a format, and export a PNG.",
 };
 
 export default function RootLayout({

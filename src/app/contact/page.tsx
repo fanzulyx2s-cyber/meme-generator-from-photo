@@ -1,4 +1,11 @@
 import { InfoCard, SimplePage } from "@/components/simple-page";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Contact | MemePhoto AI",
+  description:
+    "Contact MemePhoto AI support for payment, refund, license, or product questions.",
+};
 
 export default function ContactPage() {
   return (
