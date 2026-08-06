@@ -1,6 +1,16 @@
 import Link from "next/link";
+
+import { createPageMetadata } from "@/lib/metadata";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
+
+export const metadata = createPageMetadata({
+  title: "Payment Completed",
+  description:
+    "Payment confirmation and Creator license activation instructions for MemePhoto AI.",
+  path: "/success",
+  noIndex: true,
+});
 
 export default function SuccessPage() {
   return (

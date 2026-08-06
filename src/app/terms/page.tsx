@@ -1,12 +1,21 @@
 import Link from "next/link";
+
+import { createPageMetadata } from "@/lib/metadata";
 import { InfoCard, SimplePage } from "@/components/simple-page";
+
+export const metadata = createPageMetadata({
+  title: "Terms of Service",
+  description:
+    "Read the terms for using MemePhoto AI, including photo rights, optional AI caption processing, Creator licenses, payments, and prohibited content.",
+  path: "/terms",
+});
 
 export default function TermsPage() {
   return (
     <SimplePage
       eyebrow="Terms"
       title="Terms of Service"
-      description="Last updated: July 16, 2026"
+      description="Last updated: August 5, 2026"
     >
       <InfoCard title="Use of the service">
         <p>
@@ -18,8 +27,25 @@ export default function TermsPage() {
       </InfoCard>
       <InfoCard title="Local processing">
         <p>
-          Photos you select are processed locally in your browser using Canvas.
-          They are not uploaded to or stored by this website for meme creation.
+          Photos used in the manual editor are processed locally in your
+          browser using Canvas. They are not uploaded for manual meme creation.
+          The optional AI caption feature is a separate, consent-based flow
+          described below.
+        </p>
+      </InfoCard>
+      <InfoCard title="Optional AI caption feature">
+        <p>
+          When AI captions are available, they are optional. By reviewing the
+          notice and choosing to continue, you authorize a compressed copy of
+          the selected photo to be sent to the configured AI provider for
+          caption analysis.
+        </p>
+        <p>
+          AI-generated captions may be inaccurate, inappropriate, repetitive,
+          or unsuitable for a particular audience. You are responsible for
+          reviewing and editing every caption before downloading, publishing,
+          or sharing it. Do not submit sensitive images to the AI caption
+          feature.
         </p>
       </InfoCard>
       <InfoCard title="Acceptable Use and Prohibited Content">

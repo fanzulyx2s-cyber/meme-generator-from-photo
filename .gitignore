@@ -14,6 +14,8 @@
 
 # testing
 /coverage
+/private-ai-test-images/
+/local-ai-comparison-results/
 
 # next.js
 /.next/
@@ -42,3 +44,6 @@ dev-server.*.log
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+.vercel
+.env*

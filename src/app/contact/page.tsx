@@ -1,11 +1,12 @@
 import { InfoCard, SimplePage } from "@/components/simple-page";
-import type { Metadata } from "next";
+import { createPageMetadata } from "@/lib/metadata";
 
-export const metadata: Metadata = {
-  title: "Contact | MemePhoto AI",
+export const metadata = createPageMetadata({
+  title: "Contact",
   description:
-    "Contact MemePhoto AI support for payment, refund, license, or product questions.",
-};
+    "Contact MemePhoto AI support for product, payment, refund, Creator license, or photo meme maker questions.",
+  path: "/contact",
+});
 
 export default function ContactPage() {
   return (

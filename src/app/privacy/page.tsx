@@ -1,18 +1,19 @@
 import { InfoCard, SimplePage } from "@/components/simple-page";
-import type { Metadata } from "next";
+import { createPageMetadata } from "@/lib/metadata";
 
-export const metadata: Metadata = {
-  title: "Privacy Policy | MemePhoto AI",
+export const metadata = createPageMetadata({
+  title: "Privacy Policy",
   description:
-    "Learn how MemePhoto AI handles local photo processing, Creator license activation, payments through Creem, and support communications.",
-};
+    "Learn how MemePhoto AI handles browser-local editing, optional AI caption processing, Creator license activation, Creem payments, and support messages.",
+  path: "/privacy",
+});
 
 export default function PrivacyPage() {
   return (
     <SimplePage
       eyebrow="Privacy Policy"
       title="Privacy Policy"
-      description="Last updated: July 17, 2026"
+      description="Last updated: August 5, 2026"
     >
       <InfoCard title="Introduction">
         <p>
@@ -28,9 +29,10 @@ export default function PrivacyPage() {
 
       <InfoCard title="Local Photo Processing">
         <p>
-          Photos selected by users are processed locally in the browser using
-          Canvas. Photos are not uploaded to or stored by MemePhoto AI for meme
-          creation.
+          Photos used in the manual editor are processed locally in the
+          browser using Canvas. They are not uploaded to or stored by MemePhoto
+          AI unless the user separately chooses the optional AI caption feature
+          described below.
         </p>
         <p>
           Users may add photos, text, emoji, logos, and image stickers in the
@@ -40,6 +42,29 @@ export default function PrivacyPage() {
         <p>
           Users are responsible for ensuring that the images and content they
           use with MemePhoto AI are lawful for them to use.
+        </p>
+      </InfoCard>
+
+      <InfoCard title="Optional AI Caption Processing">
+        <p>
+          Manual editing does not require an AI service. When the optional AI
+          caption feature is enabled, it remains off until a user uploads a
+          photo, reviews the on-screen notice, and explicitly chooses to
+          continue.
+        </p>
+        <p>
+          After consent, the browser creates a compressed image copy and sends
+          it through MemePhoto AI&apos;s server endpoint to the configured AI
+          provider for caption analysis. The current implementation supports
+          Google Gemini. The provider returns text caption suggestions, which
+          remain editable in the browser.
+        </p>
+        <p>
+          MemePhoto AI does not intentionally save the submitted image in an
+          application database or user account. The AI provider may process the
+          image and generated text under its own terms and privacy practices.
+          Users should not submit identification documents, financial records,
+          private messages, or other sensitive images for AI captioning.
         </p>
       </InfoCard>
 

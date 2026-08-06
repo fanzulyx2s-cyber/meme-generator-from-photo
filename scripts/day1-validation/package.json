@@ -1,0 +1,18 @@
+{
+  "name": "memephotoai-day1-validation",
+  "private": true,
+  "type": "module",
+  "description": "MemePhoto AI Day 1 product, SEO and GA4 validation toolkit.",
+  "scripts": {
+    "check:product": "node scripts/product-check.mjs",
+    "check:seo": "node scripts/seo-check.mjs",
+    "check:ga4": "node scripts/ga4-check.mjs",
+    "lint": "npx --no-install eslint scripts/*.mjs --config eslint.config.mjs",
+    "report": "node scripts/build-report.mjs"
+  },
+  "dependencies": {
+    "cheerio": "latest",
+    "googleapis": "latest",
+    "playwright": "latest"
+  }
+}

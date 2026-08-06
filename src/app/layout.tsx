@@ -1,10 +1,40 @@
 import type { Metadata } from "next";
+
+import { siteConfig } from "@/lib/site-config";
+
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "MemePhoto AI - Browser-Based Photo Meme Maker",
-  description:
-    "Create memes from your photos in your browser. Add captions, emojis, and image stickers, choose a format, and export a PNG.",
+  metadataBase: new URL(siteConfig.url),
+  title: {
+    default: siteConfig.defaultTitle,
+    template: siteConfig.titleTemplate,
+  },
+  description: siteConfig.description,
+  applicationName: siteConfig.name,
+  icons: {
+    icon: "/favicon.ico",
+  },
+  openGraph: {
+    type: "website",
+    locale: "en_US",
+    url: siteConfig.url,
+    siteName: siteConfig.name,
+    title: siteConfig.defaultTitle,
+    description: siteConfig.description,
+    images: [
+      {
+        url: siteConfig.ogImage,
+        alt: "MemePhoto AI photo meme maker preview",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: siteConfig.defaultTitle,
+    description: siteConfig.description,
+    images: [siteConfig.ogImage],
+  },
 };
 
 export default function RootLayout({

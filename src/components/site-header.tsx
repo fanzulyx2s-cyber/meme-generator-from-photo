@@ -1,13 +1,18 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 const navItems = [
-  { label: "Generator", href: "/#generator" },
-  { label: "How it works", href: "/#how-it-works" },
-  { label: "Pricing", href: "/pricing" },
-  { label: "FAQ", href: "/#faq" },
+  { label: "Generator", href: "/#generator", paths: ["/"] },
+  { label: "Reaction memes", href: "/photo-reaction-meme-maker", paths: ["/photo-reaction-meme-maker"] },
+  { label: "How-to guide", href: "/how-to-make-a-meme-from-a-photo", paths: ["/how-to-make-a-meme-from-a-photo"] },
+  { label: "Pricing", href: "/pricing", paths: ["/pricing", "/no-watermark-meme-maker"] },
 ];
 
 export function SiteHeader() {
+  const pathname = usePathname();
+
   return (
     <header className="sticky top-0 z-50 border-b border-white/60 bg-[#fffaf3]/85 backdrop-blur-xl">
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
@@ -19,15 +24,22 @@ export function SiteHeader() {
         </Link>
 
         <nav className="hidden items-center gap-2 rounded-full border border-black/10 bg-white/80 p-1 shadow-sm md:flex">
-          {navItems.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className="rounded-full px-4 py-2 text-sm font-semibold text-zinc-700 transition hover:bg-zinc-950 hover:text-white"
-            >
-              {item.label}
-            </Link>
-          ))}
+          {navItems.map((item) => {
+            const isCurrent = item.paths.includes(pathname);
+
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                aria-current={isCurrent ? "page" : undefined}
+                className={`rounded-full px-4 py-2 text-sm font-semibold transition hover:bg-zinc-950 hover:text-white ${
+                  isCurrent ? "bg-zinc-950 text-white" : "text-zinc-700"
+                }`}
+              >
+                {item.label}
+              </Link>
+            );
+          })}
         </nav>
 
         <Link

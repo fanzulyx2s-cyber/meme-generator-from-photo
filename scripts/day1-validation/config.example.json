@@ -1,0 +1,45 @@
+﻿{
+  "projectName": "MemePhoto AI",
+  "projectPath": "C:\\path\\to\\meme-generator-from-photo",
+  "siteUrl": "https://memephotoai.com",
+  "googleAccountHint": "",
+  "publicPages": [
+    "/",
+    "/pricing",
+    "/contact",
+    "/privacy",
+    "/refund",
+    "/terms",
+    "/acceptable-use"
+  ],
+  "noindexPages": [
+    "/success",
+    "/cancel"
+  ],
+  "robotsUrl": "https://memephotoai.com/robots.txt",
+  "sitemapUrl": "https://memephotoai.com/sitemap.xml",
+  "expectedCanonicalHost": "memephotoai.com",
+  "product": {
+    "headless": true,
+    "timeoutMs": 30000,
+    "samplePhoto": "assets/sample-photo.png",
+    "sampleSticker": "assets/sample-sticker.png",
+    "topText": "WHEN THE DAY 1 TEST STARTS",
+    "bottomText": "AND THE MEME EXPORT ACTUALLY WORKS",
+    "testLicenseEnv": "MEMEPHOTO_TEST_LICENSE_KEY",
+    "allowExternalCheckout": false
+  },
+  "gsc": {
+    "apiEnabled": false,
+    "siteUrl": "sc-domain:memephotoai.com",
+    "submitSitemap": false,
+    "credentialsEnv": "GOOGLE_APPLICATION_CREDENTIALS"
+  },
+  "ga4": {
+    "realtimeApiEnabled": false,
+    "propertyIdEnv": "GA4_PROPERTY_ID",
+    "credentialsEnv": "GOOGLE_APPLICATION_CREDENTIALS",
+    "testEventName": "day1_validation",
+    "realtimeWaitSeconds": 90
+  }
+}

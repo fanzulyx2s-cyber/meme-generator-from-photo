@@ -1,11 +1,12 @@
 import { InfoCard, SimplePage } from "@/components/simple-page";
-import type { Metadata } from "next";
+import { createPageMetadata } from "@/lib/metadata";
 
-export const metadata: Metadata = {
-  title: "Refund Policy | MemePhoto AI",
+export const metadata = createPageMetadata({
+  title: "Refund Policy",
   description:
-    "Learn how refund requests work for the MemePhoto AI Creator Plan, including the 14-day request window and Creem processing.",
-};
+    "Review the MemePhoto AI Creator Plan refund process, including the 14-day request window, eligibility, and Creem payment handling.",
+  path: "/refund",
+});
 
 export default function RefundPage() {
   return (

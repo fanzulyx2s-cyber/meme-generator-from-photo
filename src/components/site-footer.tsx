@@ -1,6 +1,9 @@
 import Link from "next/link";
 
 const footerLinks = [
+  { label: "Reaction Meme Maker", href: "/photo-reaction-meme-maker" },
+  { label: "Photo Meme Guide", href: "/how-to-make-a-meme-from-a-photo" },
+  { label: "Watermark-Free Plan", href: "/no-watermark-meme-maker" },
   { label: "Pricing", href: "/pricing" },
   { label: "Privacy Policy", href: "/privacy" },
   { label: "Terms of Service", href: "/terms" },
@@ -22,8 +25,8 @@ export function SiteFooter() {
               MemePhoto AI
             </p>
             <p className="mt-3 max-w-xl text-balance text-2xl font-black">
-              A simple browser-based meme maker for photos. Your image stays on
-              your device.
+              A browser-based photo meme maker with editable text, stickers,
+              PNG export, and optional AI caption ideas after consent.
             </p>
             <p className="mt-4 text-sm font-semibold text-white/75">
               <a

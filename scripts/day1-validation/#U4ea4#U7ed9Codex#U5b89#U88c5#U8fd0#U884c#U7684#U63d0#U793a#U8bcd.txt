@@ -1,0 +1,43 @@
+请把“第1天一键验收工具”安全接入 MemePhoto AI 项目。
+
+源目录：
+[把解压后的 MemePhotoAI-Day1-Validation 目录路径填在这里]
+
+目标项目：
+<PROJECT_ROOT>
+目标目录：
+scripts/day1-validation
+要求：
+
+1. 先检查当前 Git 分支、git status，以及目标目录是否已经存在。
+2. 不覆盖任何现有文件；如果存在同名目录，先停止并报告。
+3. 将完整工具目录复制到目标目录。
+4. 检查工具中的 config.json，确认：
+   - siteUrl 为 https://memephotoai.com
+   - publicPages 与当前公开路由一致
+   - noindexPages 包含 /success 和 /cancel
+5. 不读取或输出 .env.local 的值。
+6. 不把任何 Google 凭据、Creem Key、License Key 写入配置或代码。
+7. 安装该工具自己的依赖；优先使用项目已经采用的包管理器。
+8. 安装或确认 Playwright Chromium。
+9. 先运行：
+   run-day1-check.ps1 -Module SEO
+10. 再运行：
+   run-day1-check.ps1 -Module Product
+11. 再运行：
+   run-day1-check.ps1 -Module GA4
+12. 最后运行全部模块，生成统一 REPORT.html 和 REPORT.md。
+13. 根据实际页面 DOM 调整 Playwright 选择器时，只修改该工具目录中的文件。
+14. 不修改网站业务代码，除非我后续明确批准。
+15. 不 git add、不 commit、不 push。
+16. 最后报告：
+   - 安装结果
+   - 三个模块结果
+   - 报告文件路径
+   - 自动通过项
+   - FAIL 项
+   - MANUAL 项
+   - 发生过的文件修改
+   - 明确确认未 commit、未 push
+
+完成后停止，等待确认。

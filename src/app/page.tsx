@@ -1,35 +1,72 @@
 import Image from "next/image";
 import Link from "next/link";
+
 import { CreatorLicensePanel } from "@/components/creator-license-panel";
+import { JsonLd } from "@/components/json-ld";
 import { MemeGenerator } from "@/components/meme-generator";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
+import { createPageMetadata } from "@/lib/metadata";
+import { absoluteUrl, siteConfig } from "@/lib/site-config";
+
+export const metadata = createPageMetadata({
+  title: siteConfig.defaultTitle,
+  description: siteConfig.description,
+  path: "/",
+  absoluteTitle: true,
+});
+
+const aiCaptionsEnabled = process.env.AI_CAPTIONS_ENABLED === "true";
 
 const steps = [
   {
     number: "01",
     title: "Upload your photo",
-    text: "Choose a JPG, PNG, or WEBP from your device. The file stays in your browser.",
+    text: "Choose a JPG, PNG, or WEBP from your device. Manual editing stays in your browser.",
   },
   {
     number: "02",
     title: "Add meme text",
-    text: "Type your top and bottom captions and watch the canvas preview update.",
+    text: "Write top and bottom captions, choose a preset, or add emoji and image stickers.",
   },
   {
     number: "03",
-    title: "Download PNG",
-    text: "Save the finished meme as a PNG for social posts, chats, or reactions.",
+    title: "Download a PNG",
+    text: "Choose a square, portrait, or story format, review the preview, and save the finished meme.",
   },
 ];
 
 const useCases = [
-  "Social posts",
-  "Group chat reactions",
-  "Product jokes",
-  "Pet memes",
-  "Event moments",
-  "Inside jokes",
+  {
+    title: "Social posts",
+    text: "Turn a personal photo into a square or portrait meme for a social feed.",
+    href: "/#generator",
+  },
+  {
+    title: "Group chat reactions",
+    text: "Add a short setup and payoff to a reaction photo for chats and comments.",
+    href: "/photo-reaction-meme-maker",
+  },
+  {
+    title: "Product jokes",
+    text: "Use a product photo, label, or logo sticker to create a visual inside joke.",
+    href: "/#generator",
+  },
+  {
+    title: "Pet memes",
+    text: "Caption a pet expression and add an emoji without covering the main subject.",
+    href: "/#generator",
+  },
+  {
+    title: "Event moments",
+    text: "Transform a memorable event photo into a shareable PNG with clear context.",
+    href: "/how-to-make-a-meme-from-a-photo",
+  },
+  {
+    title: "Inside jokes",
+    text: "Combine a familiar photo with editable text for friends, teams, or communities.",
+    href: "/#generator",
+  },
 ];
 
 const pricingStyles: Record<string, string> = {
@@ -41,27 +78,73 @@ const faqs = [
   {
     question: "Do you upload my photo?",
     answer:
-      "No. Photos are processed locally in your browser with Canvas. Your selected photo is not uploaded to this website.",
+      "Manual photo editing stays in your browser. If you choose the optional AI caption feature, a compressed copy is sent to the configured AI provider only after you review the notice and explicitly continue.",
   },
   {
     question: "Is an account required?",
     answer:
-      "No. You can create and download memes without creating an account.",
+      "No. You can create and download photo memes without creating an account.",
   },
   {
     question: "Does this use an AI API?",
     answer:
-      "No. MemePhoto AI is a browser-based photo-to-meme Canvas tool and does not call an AI API for image generation.",
+      "The manual editor does not require an AI API. When AI captions are enabled, they are optional and only run after consent; the generated caption ideas remain editable.",
   },
   {
     question: "Can I download the result?",
     answer:
-      "Yes. The meme preview can be downloaded as a PNG from the browser after you add your photo and text.",
+      "Yes. You can download the completed meme as a PNG after editing the photo, text, stickers, and format.",
   },
   {
     question: "How can I contact support?",
     answer:
-      "If you have any questions about payments, refunds, or using MemePhoto AI, please contact us at support@memephotoai.com.",
+      "For product, payment, refund, or Creator license questions, contact support@memephotoai.com.",
+  },
+];
+
+const homeStructuredData = [
+  {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    name: siteConfig.name,
+    url: siteConfig.url,
+    applicationCategory: "MultimediaApplication",
+    operatingSystem: "Any modern web browser",
+    description: siteConfig.description,
+    offers: [
+      {
+        "@type": "Offer",
+        name: "Free Demo",
+        price: "0",
+        priceCurrency: "USD",
+      },
+      {
+        "@type": "Offer",
+        name: "Creator Plan",
+        price: "9",
+        priceCurrency: "USD",
+        url: absoluteUrl("/pricing"),
+      },
+    ],
+    featureList: [
+      "Upload a photo",
+      "Add top and bottom captions",
+      "Use caption presets",
+      "Add emoji and image stickers",
+      "Export a PNG",
+    ],
+  },
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: faqs.map((faq) => ({
+      "@type": "Question",
+      name: faq.question,
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: faq.answer,
+      },
+    })),
   },
 ];
 
@@ -170,7 +253,9 @@ function StepDecoration({ number }: { number: string }) {
 
 export default function Home() {
   return (
-    <div className="min-h-screen overflow-hidden bg-[#fff6e8] text-zinc-950">
+    <>
+      <JsonLd data={homeStructuredData} />
+      <div className="min-h-screen overflow-hidden bg-[#fff6e8] text-zinc-950">
       <SiteHeader />
       <main>
         <section className="px-4 py-8 sm:px-6 lg:px-8 lg:py-12">
@@ -178,15 +263,15 @@ export default function Home() {
             <div className="flex flex-col justify-between rounded-[2rem] bg-white/70 p-6 backdrop-blur md:p-8">
               <div>
                 <p className="w-fit rounded-full bg-zinc-950 px-4 py-2 text-xs font-black uppercase tracking-[0.18em] text-white">
-                  Browser-only photo memes
+                  Photo meme maker — browser based
                 </p>
                 <h1 className="mt-6 max-w-3xl text-balance text-5xl font-black tracking-tight text-zinc-950 md:text-6xl lg:text-7xl">
-                  Turn any photo into a meme in seconds
+                  Make a meme from any photo
                 </h1>
                 <p className="mt-5 max-w-2xl text-lg leading-8 text-zinc-700">
-                  MemePhoto AI is a browser-based photo meme maker. Upload a
-                  photo, add top and bottom text, preview it with Canvas, and
-                  download a PNG. No login, no database, no server upload.
+                  Create a photo meme online with editable captions, presets,
+                  emoji, and image stickers. Manual editing stays in your browser,
+                  no account is required, and the finished meme downloads as a PNG.
                 </p>
               </div>
 
@@ -264,6 +349,7 @@ export default function Home() {
 
         <div className="mx-auto grid max-w-7xl gap-14 px-4 py-8 sm:px-6 lg:px-8">
           <MemeGenerator
+            aiCaptionsEnabled={aiCaptionsEnabled}
             afterEditorContent={<CreatorLicensePanel variant="compact" />}
           />
 
@@ -319,19 +405,20 @@ export default function Home() {
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {useCases.map((item) => (
                   <Link
-                    key={item}
-                    href="/#generator"
+                    key={item.title}
+                    href={item.href}
                     className="relative overflow-hidden rounded-[1.75rem] border border-black/10 bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg"
                   >
                     <span className="absolute inset-0 bg-[radial-gradient(circle_at_86%_20%,rgba(255,222,89,0.28)_0_16%,transparent_17%),linear-gradient(135deg,rgba(255,247,232,0.7),rgba(223,247,255,0.38))]" />
-                    <UseCaseDecoration item={item} />
+                    <UseCaseDecoration item={item.title} />
                     <span className="relative inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-[#ffde59] text-lg font-black shadow-sm">
-                      {item.slice(0, 1)}
+                      {item.title.slice(0, 1)}
                     </span>
-                    <h3 className="relative mt-5 text-xl font-black">{item}</h3>
+                    <h3 className="relative mt-5 text-xl font-black">
+                      {item.title}
+                    </h3>
                     <p className="relative mt-2 text-sm leading-6 text-zinc-600">
-                      Create a fast meme from a photo and share the PNG wherever
-                      you need it.
+                      {item.text}
                     </p>
                   </Link>
                 ))}
@@ -428,7 +515,8 @@ export default function Home() {
           </section>
         </div>
       </main>
-      <SiteFooter />
-    </div>
+        <SiteFooter />
+      </div>
+    </>
   );
 }

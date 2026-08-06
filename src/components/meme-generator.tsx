@@ -9,7 +9,9 @@ import {
   useRef,
   useState,
 } from "react";
-import { useCreatorLicense } from "@/hooks/use-creator-license";
+import { AiCaptionPanel } from "./ai-caption-panel";
+import { scrollPreviewIntoViewOnMobile } from "./mobile-preview-scroll";
+import { useCreatorLicense } from "../hooks/use-creator-license";
 
 const canvasSize = 1000;
 
@@ -65,6 +67,7 @@ const watermarkText = "memephotoai.com";
 
 type MemeGeneratorProps = {
   afterEditorContent?: ReactNode;
+  aiCaptionsEnabled?: boolean;
 };
 
 type CanvasBounds = {
@@ -857,9 +860,13 @@ function drawStickers(
   });
 }
 
-export function MemeGenerator({ afterEditorContent }: MemeGeneratorProps) {
+export function MemeGenerator({
+  afterEditorContent,
+  aiCaptionsEnabled = false,
+}: MemeGeneratorProps) {
   const { isCreator } = useCreatorLicense();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const previewRef = useRef<HTMLDivElement | null>(null);
   const dragRef = useRef<{ id: number; offsetX: number; offsetY: number } | null>(
     null,
   );
@@ -890,6 +897,7 @@ export function MemeGenerator({ afterEditorContent }: MemeGeneratorProps) {
   const imageStickerCacheRef = useRef<Map<string, HTMLImageElement>>(new Map());
   const stickerIdRef = useRef(0);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [originalFile, setOriginalFile] = useState<File | null>(null);
   const [topText, setTopText] = useState(
     "WHEN THE GROUP CHAT NEEDS A REACTION",
   );
@@ -946,6 +954,10 @@ export function MemeGenerator({ afterEditorContent }: MemeGeneratorProps) {
   const selectedTextBox = selectedTextLayer
     ? getTextLayerBox(selectedTextLayer, selectedTextValue)
     : { width: 0, height: 0 };
+
+  function scrollToPreviewOnMobile() {
+    scrollPreviewIntoViewOnMobile(previewRef.current);
+  }
 
   useEffect(() => {
     stickers.forEach((sticker) => {
@@ -1285,6 +1297,9 @@ export function MemeGenerator({ afterEditorContent }: MemeGeneratorProps) {
 
     setStickers((currentStickers) => [...currentStickers, nextSticker]);
     setSelectedStickerId(nextSticker.id);
+    if (!point) {
+      scrollToPreviewOnMobile();
+    }
   }
 
   function handleAddSticker(option: StickerOption) {
@@ -1347,6 +1362,7 @@ export function MemeGenerator({ afterEditorContent }: MemeGeneratorProps) {
 
     setStickers((currentStickers) => [...currentStickers, nextSticker]);
     setSelectedStickerId(nextSticker.id);
+    scrollToPreviewOnMobile();
   }
 
   function updateSelectedStickerSize(delta: number) {
@@ -1438,6 +1454,7 @@ export function MemeGenerator({ afterEditorContent }: MemeGeneratorProps) {
   function resetLayout() {
     setSelectedStickerId(null);
     setSelectedTextId(null);
+    scrollToPreviewOnMobile();
     setTextAboveStickers(true);
     setTextLayers({
       top: {
@@ -1463,8 +1480,6 @@ export function MemeGenerator({ afterEditorContent }: MemeGeneratorProps) {
     const nextHeight =
       outputRatios.find((ratio) => ratio.id === nextRatio)?.height ?? canvasSize;
     setOutputRatio(nextRatio);
-    setSelectedStickerId(null);
-    setSelectedTextId(null);
     setTextLayers((currentLayers) => ({
       ...currentLayers,
       bottom: {
@@ -1729,6 +1744,7 @@ export function MemeGenerator({ afterEditorContent }: MemeGeneratorProps) {
     setSelectedPresetId(presetId);
     setTopText(preset.top);
     setBottomText(preset.bottom);
+    scrollToPreviewOnMobile();
   }
 
   function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
@@ -1737,7 +1753,7 @@ export function MemeGenerator({ afterEditorContent }: MemeGeneratorProps) {
       return;
     }
 
-    if (!file.type.startsWith("image/")) {
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
       return;
     }
 
@@ -1748,7 +1764,9 @@ export function MemeGenerator({ afterEditorContent }: MemeGeneratorProps) {
       }
       return nextUrl;
     });
+    setOriginalFile(file);
     setFileName(file.name);
+    scrollToPreviewOnMobile();
   }
 
   function handleClear() {
@@ -1758,6 +1776,7 @@ export function MemeGenerator({ afterEditorContent }: MemeGeneratorProps) {
       }
       return null;
     });
+    setOriginalFile(null);
     stickers.forEach((sticker) => {
       if (sticker.type === "image" && sticker.src) {
         URL.revokeObjectURL(sticker.src);
@@ -1864,6 +1883,18 @@ export function MemeGenerator({ afterEditorContent }: MemeGeneratorProps) {
                 </span>
               ) : null}
             </label>
+
+            {aiCaptionsEnabled && originalFile ? (
+              <AiCaptionPanel
+                file={originalFile}
+                onUseCaption={(caption) => {
+                  setTopText(caption.topText);
+                  setBottomText(caption.bottomText);
+                  setSelectedPresetId("");
+                  scrollToPreviewOnMobile();
+                }}
+              />
+            ) : null}
 
             <div className="relative overflow-hidden rounded-[2rem] border border-black/10 bg-gradient-to-br from-white via-[#fffaf3] to-[#f5fbff] p-5 shadow-sm">
               <span className="absolute right-5 top-5 h-12 w-28 rounded-[1.4rem] bg-[#ffd6e7]/45" />
@@ -2104,10 +2135,20 @@ export function MemeGenerator({ afterEditorContent }: MemeGeneratorProps) {
               >
                 Clear and start over
               </button>
+              {originalFile ? (
+                <button
+                  type="button"
+                  onClick={scrollToPreviewOnMobile}
+                  aria-label="View live preview"
+                  className="mt-3 rounded-full border border-zinc-300 bg-white/70 px-5 py-3 text-sm font-black text-zinc-700 md:hidden"
+                >
+                  View Preview
+                </button>
+              ) : null}
             </div>
           </div>
 
-          <div className="relative self-start overflow-hidden rounded-[2rem] border border-black/10 bg-zinc-950 p-4 shadow-[0_20px_70px_rgba(0,0,0,0.2)]">
+          <div ref={previewRef} className="relative self-start scroll-mt-24 overflow-hidden rounded-[2rem] border border-black/10 bg-zinc-950 p-4 shadow-[0_20px_70px_rgba(0,0,0,0.2)]">
             {!imageUrl ? (
               <>
                 <span className="absolute inset-4 rounded-[1.5rem] bg-[radial-gradient(circle,rgba(255,255,255,0.14)_1px,transparent_1px)] [background-size:18px_18px]" />
@@ -2242,54 +2283,57 @@ export function MemeGenerator({ afterEditorContent }: MemeGeneratorProps) {
                 </button>
               </div>
 
+              <div className="grid gap-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="mr-1 text-xs font-black uppercase tracking-[0.16em] text-zinc-500">
+                    Size
+                  </span>
+                  {outputRatios.map((ratio) => (
+                    <button
+                      key={ratio.id}
+                      type="button"
+                      onClick={() => selectOutputRatio(ratio.id)}
+                      className={`rounded-full px-4 py-2 text-xs font-black transition ${
+                        outputRatio === ratio.id
+                          ? "bg-[#ffde59] text-zinc-950"
+                          : "bg-white text-zinc-700 hover:text-zinc-950"
+                      }`}
+                    >
+                      {ratio.label}
+                    </button>
+                  ))}
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="mr-1 text-xs font-black uppercase tracking-[0.16em] text-zinc-500">
+                    Frame
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setFrameEnabled(true)}
+                    className={`rounded-full px-4 py-2 text-xs font-black transition ${
+                      frameEnabled
+                        ? "bg-zinc-950 text-white"
+                        : "bg-white text-zinc-700 hover:text-zinc-950"
+                    }`}
+                  >
+                    Frame On
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFrameEnabled(false)}
+                    className={`rounded-full px-4 py-2 text-xs font-black transition ${
+                      !frameEnabled
+                        ? "bg-zinc-950 text-white"
+                        : "bg-white text-zinc-700 hover:text-zinc-950"
+                    }`}
+                  >
+                    Frame Off
+                  </button>
+                </div>
+              </div>
+
               {!selectedSticker && !selectedTextLayer ? (
                 <div className="grid gap-3">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="mr-1 text-xs font-black uppercase tracking-[0.16em] text-zinc-500">
-                      Size
-                    </span>
-                    {outputRatios.map((ratio) => (
-                      <button
-                        key={ratio.id}
-                        type="button"
-                        onClick={() => selectOutputRatio(ratio.id)}
-                        className={`rounded-full px-4 py-2 text-xs font-black transition ${
-                          outputRatio === ratio.id
-                            ? "bg-[#ffde59] text-zinc-950"
-                            : "bg-white text-zinc-700 hover:text-zinc-950"
-                        }`}
-                      >
-                        {ratio.label}
-                      </button>
-                    ))}
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="mr-1 text-xs font-black uppercase tracking-[0.16em] text-zinc-500">
-                      Frame
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => setFrameEnabled(true)}
-                      className={`rounded-full px-4 py-2 text-xs font-black transition ${
-                        frameEnabled
-                          ? "bg-zinc-950 text-white"
-                          : "bg-white text-zinc-700 hover:text-zinc-950"
-                      }`}
-                    >
-                      Frame On
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setFrameEnabled(false)}
-                      className={`rounded-full px-4 py-2 text-xs font-black transition ${
-                        !frameEnabled
-                          ? "bg-zinc-950 text-white"
-                          : "bg-white text-zinc-700 hover:text-zinc-950"
-                      }`}
-                    >
-                      Frame Off
-                    </button>
-                  </div>
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="mr-1 text-xs font-black uppercase tracking-[0.16em] text-zinc-500">
                       Add

@@ -1,11 +1,19 @@
 import { InfoCard, SimplePage } from "@/components/simple-page";
+import { createPageMetadata } from "@/lib/metadata";
+
+export const metadata = createPageMetadata({
+  title: "Acceptable Use Policy",
+  description:
+    "Review the content and conduct rules for using the MemePhoto AI photo meme maker and optional AI caption feature.",
+  path: "/acceptable-use",
+});
 
 export default function AcceptableUsePage() {
   return (
     <SimplePage
       eyebrow="Policy"
       title="Acceptable Use Policy"
-      description="Last updated: July 15, 2026"
+      description="Last updated: August 5, 2026"
     >
       <InfoCard title="Introduction">
         <p>
@@ -118,6 +126,20 @@ export default function AcceptableUsePage() {
             public.
           </li>
         </ul>
+      </InfoCard>
+
+      <InfoCard title="AI Caption Requests and Outputs">
+        <p>
+          Users may not submit images to the optional AI caption feature when
+          the image itself, the requested use, or the intended output violates
+          this policy. Users may not attempt to bypass safety controls or use
+          generated text to facilitate prohibited conduct.
+        </p>
+        <p>
+          AI caption suggestions are not automatically approved by MemePhoto
+          AI. Users must review, edit, and take responsibility for the final
+          text they choose to download or share.
+        </p>
       </InfoCard>
 
       <InfoCard title="User Responsibility">

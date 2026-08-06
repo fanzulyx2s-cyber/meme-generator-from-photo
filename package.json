@@ -6,21 +6,30 @@
     "dev": "next dev",
     "build": "next build --webpack",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test:ai-models": "node scripts/compare-gemini-caption-models.mjs",
+    "test:ai": "vitest run src/lib/ai/captions src/app/api/ai-meme-captions src/components/__tests__/ai-caption-panel.test.tsx src/components/__tests__/meme-generator-mobile-scroll.test.tsx src/components/__tests__/site-header.test.tsx src/components/__tests__/meme-generator-toolbar.test.tsx"
   },
   "dependencies": {
+    "@google/genai": "^2.13.0",
     "next": "16.2.10",
     "react": "19.2.4",
-    "react-dom": "19.2.4"
+    "react-dom": "19.2.4",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@testing-library/jest-dom": "^7.0.0",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.10",
+    "jsdom": "^29.1.1",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^4.1.10"
   }
 }

@@ -1,7 +1,16 @@
 import Link from "next/link";
+
+import { createPageMetadata } from "@/lib/metadata";
 import { CreatorCheckoutButton } from "@/components/creator-checkout-button";
 import { CreatorLicensePanel } from "@/components/creator-license-panel";
 import { SimplePage } from "@/components/simple-page";
+
+export const metadata = createPageMetadata({
+  title: "Pricing – Free Demo and $9 Creator Plan",
+  description:
+    "Compare the free MemePhoto AI editor with the $9 one-time Creator Plan for watermark-free previews and PNG meme downloads.",
+  path: "/pricing",
+});
 
 const plans = [
   {
@@ -61,7 +70,7 @@ const faqs = [
   {
     question: "Do you store uploaded photos?",
     answer:
-      "No. Photos are processed locally in your browser for meme creation.",
+      "Manual editing stays in your browser. Optional AI captions only send a compressed copy after consent; MemePhoto AI does not intentionally save that image in an application database.",
   },
 ];
 

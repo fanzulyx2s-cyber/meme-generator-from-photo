@@ -1,6 +1,16 @@
 import Link from "next/link";
+
+import { createPageMetadata } from "@/lib/metadata";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
+
+export const metadata = createPageMetadata({
+  title: "Payment Cancelled",
+  description:
+    "Return to MemePhoto AI pricing after a cancelled Creator Plan checkout.",
+  path: "/cancel",
+  noIndex: true,
+});
 
 export default function CancelPage() {
   return (
