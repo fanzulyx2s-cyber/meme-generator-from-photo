@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "test:ai-models": "node scripts/compare-gemini-caption-models.mjs",
-    "test:ai": "vitest run src/lib/ai/captions src/app/api/ai-meme-captions src/components/__tests__/ai-caption-panel.test.tsx src/components/__tests__/meme-generator-mobile-scroll.test.tsx src/components/__tests__/site-header.test.tsx src/components/__tests__/meme-generator-toolbar.test.tsx"
+    "test:ai": "vitest run src/lib/ai/captions src/app/api/ai-meme-captions src/components/__tests__/ai-caption-panel.test.tsx src/components/__tests__/meme-generator-mobile-scroll.test.tsx src/components/__tests__/site-header.test.tsx src/components/__tests__/meme-generator-toolbar.test.tsx src/components/__tests__/meme-text-layout.test.ts"
   },
   "dependencies": {
     "@google/genai": "^2.13.0",

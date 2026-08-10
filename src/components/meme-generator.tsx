@@ -5,11 +5,16 @@ import {
   DragEvent as ReactDragEvent,
   ReactNode,
   PointerEvent as ReactPointerEvent,
+  useCallback,
   useEffect,
   useRef,
   useState,
 } from "react";
 import { AiCaptionPanel } from "./ai-caption-panel";
+import {
+  calculateMemeTextLayout,
+  type MemeTextLayout,
+} from "./meme-text-layout";
 import { scrollPreviewIntoViewOnMobile } from "./mobile-preview-scroll";
 import { useCreatorLicense } from "../hooks/use-creator-license";
 
@@ -314,6 +319,7 @@ function drawWrappedText(
   text: string,
   layer: MemeTextLayer,
   alignBottom = false,
+  autoLayout?: MemeTextLayout,
 ) {
   const normalizedText = text.trim().toUpperCase();
   if (!normalizedText) {
@@ -321,8 +327,27 @@ function drawWrappedText(
   }
 
   context.save();
-  context.translate(layer.x, layer.y);
+  context.translate(autoLayout?.x ?? layer.x, autoLayout?.y ?? layer.y);
   context.rotate((layer.rotation * Math.PI) / 180);
+
+  if (autoLayout) {
+    context.textAlign = "center";
+    context.textBaseline = "middle";
+    context.lineJoin = "round";
+    context.lineWidth = autoLayout.strokeWidth;
+    context.strokeStyle = "#111111";
+    context.fillStyle = "#ffffff";
+    context.font = `900 ${autoLayout.fontSize}px Impact, Arial Black, system-ui, sans-serif`;
+    const firstLineY = -((autoLayout.lines.length - 1) * autoLayout.lineHeight) / 2;
+
+    autoLayout.lines.forEach((line, index) => {
+      const lineY = firstLineY + index * autoLayout.lineHeight;
+      context.strokeText(line, 0, lineY);
+      context.fillText(line, 0, lineY);
+    });
+    context.restore();
+    return;
+  }
 
   if (layer.vertical) {
     const chars = Array.from(normalizedText.replace(/\s+/g, ""));
@@ -929,10 +954,57 @@ export function MemeGenerator({
     null,
   );
   const [frameEnabled, setFrameEnabled] = useState(true);
+  const [autoLayoutEnabled, setAutoLayoutEnabled] = useState(true);
   const [textAboveStickers, setTextAboveStickers] = useState(true);
   const [imageCacheVersion, setImageCacheVersion] = useState(0);
   const canvasHeight =
     outputRatios.find((ratio) => ratio.id === outputRatio)?.height ?? canvasSize;
+
+  const getAutoTextLayout = useCallback((
+    position: TextLayerId,
+    text: string,
+    context?: CanvasRenderingContext2D | null,
+  ) => {
+    return calculateMemeTextLayout({
+      text,
+      position,
+      ratio: outputRatio,
+      frameEnabled,
+      canvasWidth: canvasSize,
+      canvasHeight,
+      measureText: context
+        ? (value, fontSize) => {
+            context.font = `900 ${fontSize}px Impact, Arial Black, system-ui, sans-serif`;
+            return context.measureText(value).width;
+          }
+        : undefined,
+    });
+  }, [canvasHeight, frameEnabled, outputRatio]);
+
+  function materializeAutoLayout() {
+    if (!autoLayoutEnabled) {
+      return;
+    }
+
+    const context = canvasRef.current?.getContext("2d");
+    const topLayout = getAutoTextLayout("top", topText, context);
+    const bottomLayout = getAutoTextLayout("bottom", bottomText, context);
+    setAutoLayoutEnabled(false);
+    setTextLayers((currentLayers) => ({
+      top: {
+        ...currentLayers.top,
+        x: topLayout.x,
+        y: topLayout.y,
+        scale: topLayout.fontSize / 86,
+      },
+      bottom: {
+        ...currentLayers.bottom,
+        x: bottomLayout.x,
+        y: bottomLayout.y,
+        scale: bottomLayout.fontSize / 86,
+      },
+    }));
+  }
 
   const selectedSticker = stickers.find(
     (sticker) => sticker.id === selectedStickerId,
@@ -951,9 +1023,26 @@ export function MemeGenerator({
       : selectedTextId === "bottom"
         ? bottomText
         : "";
+  const selectedAutoTextLayout =
+    selectedTextLayer && autoLayoutEnabled
+      ? getAutoTextLayout(selectedTextLayer.id, selectedTextValue)
+      : undefined;
   const selectedTextBox = selectedTextLayer
-    ? getTextLayerBox(selectedTextLayer, selectedTextValue)
+    ? selectedAutoTextLayout
+      ? {
+          width: selectedAutoTextLayout.bounds.width,
+          height: selectedAutoTextLayout.bounds.height,
+        }
+      : getTextLayerBox(selectedTextLayer, selectedTextValue)
     : { width: 0, height: 0 };
+  const selectedTextPreviewLayer =
+    selectedTextLayer && selectedAutoTextLayout
+      ? {
+          ...selectedTextLayer,
+          x: selectedAutoTextLayout.x,
+          y: selectedAutoTextLayout.y,
+        }
+      : selectedTextLayer;
 
   function scrollToPreviewOnMobile() {
     scrollPreviewIntoViewOnMobile(previewRef.current);
@@ -1004,9 +1093,41 @@ export function MemeGenerator({
     context.fillStyle = "#f8efe2";
     context.fillRect(0, 0, canvasSize, canvasHeight);
 
-    const getLayerBounds = (layer: MemeTextLayer, text: string) => {
+    const topAutoLayout = autoLayoutEnabled
+      ? getAutoTextLayout("top", topText, context)
+      : undefined;
+    const bottomAutoLayout = autoLayoutEnabled
+      ? getAutoTextLayout("bottom", bottomText, context)
+      : undefined;
+
+    if (process.env.NODE_ENV !== "production" && topAutoLayout && bottomAutoLayout) {
+      console.debug("[meme-text-layout]", {
+        ratio: outputRatio,
+        canvasWidth: canvasSize,
+        canvasHeight,
+        calculatedFontSize: {
+          top: topAutoLayout.fontSize,
+          bottom: bottomAutoLayout.fontSize,
+        },
+        topTextBounds: topAutoLayout.bounds,
+        bottomTextBounds: bottomAutoLayout.bounds,
+        topSafeInset: topAutoLayout.topSafeInset,
+        bottomSafeInset: bottomAutoLayout.bottomSafeInset,
+        autoLayoutEnabled,
+      });
+    }
+
+    const getLayerBounds = (
+      layer: MemeTextLayer,
+      text: string,
+      autoLayout?: MemeTextLayout,
+    ) => {
       if (!text.trim()) {
         return undefined;
+      }
+
+      if (autoLayout) {
+        return autoLayout.bounds;
       }
 
       const box = getTextLayerBox(layer, text);
@@ -1020,13 +1141,13 @@ export function MemeGenerator({
 
     const drawFinalLayers = (imageBounds: CanvasBounds) => {
       if (!textAboveStickers) {
-        drawWrappedText(context, topText, textLayers.top);
-        drawWrappedText(context, bottomText, textLayers.bottom, true);
+        drawWrappedText(context, topText, textLayers.top, false, topAutoLayout);
+        drawWrappedText(context, bottomText, textLayers.bottom, true, bottomAutoLayout);
       }
       drawStickers(context, stickers, imageStickerCacheRef.current);
       if (textAboveStickers) {
-        drawWrappedText(context, topText, textLayers.top);
-        drawWrappedText(context, bottomText, textLayers.bottom, true);
+        drawWrappedText(context, topText, textLayers.top, false, topAutoLayout);
+        drawWrappedText(context, bottomText, textLayers.bottom, true, bottomAutoLayout);
       }
       if (frameEnabled) {
         drawFrame(context, canvasHeight);
@@ -1035,7 +1156,7 @@ export function MemeGenerator({
         drawSignatureWatermark(
           context,
           imageBounds,
-          getLayerBounds(textLayers.bottom, bottomText),
+          getLayerBounds(textLayers.bottom, bottomText, bottomAutoLayout),
         );
       }
     };
@@ -1100,6 +1221,9 @@ export function MemeGenerator({
     textLayers,
     topText,
     bottomText,
+    autoLayoutEnabled,
+    outputRatio,
+    getAutoTextLayout,
   ]);
 
   function getCanvasPointFromClient(clientX: number, clientY: number) {
@@ -1135,7 +1259,7 @@ export function MemeGenerator({
     );
   }
 
-  function findTextLayerAtPoint(x: number, y: number) {
+  function findTextLayerAtPoint(pointX: number, pointY: number) {
     const textEntries: Array<[TextLayerId, string]> = [
       ["bottom", bottomText],
       ["top", topText],
@@ -1143,10 +1267,15 @@ export function MemeGenerator({
 
     for (const [id, text] of textEntries) {
       const layer = textLayers[id];
-      const box = getTextLayerBox(layer, text);
+      const autoLayout = autoLayoutEnabled ? getAutoTextLayout(id, text) : undefined;
+      const box = autoLayout
+        ? { width: autoLayout.bounds.width, height: autoLayout.bounds.height }
+        : getTextLayerBox(layer, text);
+      const layerX = autoLayout?.x ?? layer.x;
+      const layerY = autoLayout?.y ?? layer.y;
       if (
-        Math.abs(x - layer.x) <= box.width / 2 &&
-        Math.abs(y - layer.y) <= box.height / 2
+        Math.abs(pointX - layerX) <= box.width / 2 &&
+        Math.abs(pointY - layerY) <= box.height / 2
       ) {
         return layer;
       }
@@ -1180,6 +1309,14 @@ export function MemeGenerator({
 
     const textLayer = findTextLayerAtPoint(point.x, point.y);
     if (textLayer) {
+      const activeTextLayer =
+        autoLayoutEnabled
+          ? {
+              ...textLayer,
+              x: getAutoTextLayout(textLayer.id, textLayer.id === "top" ? topText : bottomText).x,
+              y: getAutoTextLayout(textLayer.id, textLayer.id === "top" ? topText : bottomText).y,
+            }
+          : textLayer;
       setSelectedTextId(textLayer.id);
       setSelectedStickerId(null);
       dragRef.current = null;
@@ -1187,8 +1324,8 @@ export function MemeGenerator({
       textRotateRef.current = null;
       textDragRef.current = {
         id: textLayer.id,
-        offsetX: point.x - textLayer.x,
-        offsetY: point.y - textLayer.y,
+        offsetX: point.x - activeTextLayer.x,
+        offsetY: point.y - activeTextLayer.y,
       };
       event.currentTarget.setPointerCapture(event.pointerId);
       return;
@@ -1226,6 +1363,7 @@ export function MemeGenerator({
         return;
       }
 
+      materializeAutoLayout();
       setTextLayers((currentLayers) => ({
         ...currentLayers,
         [textDrag.id]: {
@@ -1456,6 +1594,7 @@ export function MemeGenerator({
     setSelectedTextId(null);
     scrollToPreviewOnMobile();
     setTextAboveStickers(true);
+    setAutoLayoutEnabled(true);
     setTextLayers({
       top: {
         id: "top",
@@ -1480,6 +1619,15 @@ export function MemeGenerator({
     const nextHeight =
       outputRatios.find((ratio) => ratio.id === nextRatio)?.height ?? canvasSize;
     setOutputRatio(nextRatio);
+    if (autoLayoutEnabled) {
+      setStickers((currentStickers) =>
+        currentStickers.map((sticker) => ({
+          ...sticker,
+          y: Math.min(nextHeight, Math.max(0, sticker.y)),
+        })),
+      );
+      return;
+    }
     setTextLayers((currentLayers) => ({
       ...currentLayers,
       bottom: {
@@ -1498,6 +1646,7 @@ export function MemeGenerator({
   function updateTextLayerScale(id: TextLayerId, delta: number) {
     setSelectedTextId(id);
     setSelectedStickerId(null);
+    materializeAutoLayout();
     setTextLayers((currentLayers) => ({
       ...currentLayers,
       [id]: {
@@ -1513,6 +1662,7 @@ export function MemeGenerator({
   function rotateTextLayer(id: TextLayerId, delta: number) {
     setSelectedTextId(id);
     setSelectedStickerId(null);
+    materializeAutoLayout();
     setTextLayers((currentLayers) => ({
       ...currentLayers,
       [id]: {
@@ -1525,6 +1675,7 @@ export function MemeGenerator({
   function setTextLayerVertical(id: TextLayerId, vertical: boolean) {
     setSelectedTextId(id);
     setSelectedStickerId(null);
+    materializeAutoLayout();
     setTextLayers((currentLayers) => ({
       ...currentLayers,
       [id]: {
@@ -1547,6 +1698,7 @@ export function MemeGenerator({
     event.stopPropagation();
     setSelectedTextId(layer.id);
     setSelectedStickerId(null);
+    materializeAutoLayout();
     textResizeRef.current = {
       id: layer.id,
       startClientX: event.clientX,
@@ -1564,6 +1716,7 @@ export function MemeGenerator({
       return;
     }
 
+    materializeAutoLayout();
     const dragDistance =
       event.clientX -
       resize.startClientX +
@@ -1616,6 +1769,7 @@ export function MemeGenerator({
     event.stopPropagation();
     setSelectedTextId(layer.id);
     setSelectedStickerId(null);
+    materializeAutoLayout();
     textRotateRef.current = {
       id: layer.id,
       centerX: layer.x,
@@ -1635,6 +1789,7 @@ export function MemeGenerator({
     }
 
     const layer = textLayers[rotate.id];
+    materializeAutoLayout();
     const currentAngle = getPointerAngleFromLayer(event, layer);
     setTextLayers((currentLayers) => ({
       ...currentLayers,
@@ -1744,6 +1899,7 @@ export function MemeGenerator({
     setSelectedPresetId(presetId);
     setTopText(preset.top);
     setBottomText(preset.bottom);
+    setAutoLayoutEnabled(true);
     scrollToPreviewOnMobile();
   }
 
@@ -1787,6 +1943,7 @@ export function MemeGenerator({
     setTopText("");
     setBottomText("");
     setSelectedPresetId("");
+    setAutoLayoutEnabled(true);
     setTextLayers({
       top: {
         id: "top",
@@ -1891,6 +2048,25 @@ export function MemeGenerator({
                   setTopText(caption.topText);
                   setBottomText(caption.bottomText);
                   setSelectedPresetId("");
+                  setAutoLayoutEnabled(true);
+                  setTextLayers({
+                    top: {
+                      id: "top",
+                      x: canvasSize / 2,
+                      y: 105,
+                      scale: 1,
+                      rotation: 0,
+                      vertical: false,
+                    },
+                    bottom: {
+                      id: "bottom",
+                      x: canvasSize / 2,
+                      y: canvasHeight - 80,
+                      scale: 1,
+                      rotation: 0,
+                      vertical: false,
+                    },
+                  });
                   scrollToPreviewOnMobile();
                 }}
               />
@@ -2182,8 +2358,8 @@ export function MemeGenerator({
                 <div
                   className="pointer-events-none absolute"
                   style={{
-                    left: `${((selectedTextLayer.x - selectedTextBox.width / 2) / canvasSize) * 100}%`,
-                    top: `${((selectedTextLayer.y - selectedTextBox.height / 2) / canvasHeight) * 100}%`,
+                    left: `${(((selectedTextPreviewLayer?.x ?? selectedTextLayer.x) - selectedTextBox.width / 2) / canvasSize) * 100}%`,
+                    top: `${(((selectedTextPreviewLayer?.y ?? selectedTextLayer.y) - selectedTextBox.height / 2) / canvasHeight) * 100}%`,
                     width: `${(selectedTextBox.width / canvasSize) * 100}%`,
                     height: `${(selectedTextBox.height / canvasHeight) * 100}%`,
                     transform: `rotate(${selectedTextLayer.rotation}deg)`,
