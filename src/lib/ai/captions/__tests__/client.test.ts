@@ -7,7 +7,29 @@ const createTestImageBase64 = (): string =>
 
 describe("requestAiCaptions", () => {
   it("keeps the client request alive long enough for one server fallback", () => {
-    expect(aiCaptionClientTimeoutMs).toBe(35_000);
+    expect(aiCaptionClientTimeoutMs).toBe(42_000);
+  });
+
+  it("reports its own deadline as a provider timeout instead of user cancellation", async () => {
+    vi.useFakeTimers();
+    const fetcher = vi.fn().mockImplementation((_url: string, init: RequestInit) =>
+      new Promise<Response>((_resolve, reject) => {
+        init.signal?.addEventListener("abort", () => reject(new DOMException("Aborted", "AbortError")), { once: true });
+      }),
+    );
+
+    const pending = requestAiCaptions({
+      imageBase64: createTestImageBase64(),
+      mimeType: "image/jpeg",
+      style: "funny",
+      fetcher,
+      timeoutMs: 10,
+    });
+    const rejection = expect(pending).rejects.toMatchObject({ code: "PROVIDER_TIMEOUT", retryable: true });
+    await vi.advanceTimersByTimeAsync(10);
+
+    await rejection;
+    vi.useRealTimers();
   });
 
   it("posts a schema-valid request and parses five captions", async () => {

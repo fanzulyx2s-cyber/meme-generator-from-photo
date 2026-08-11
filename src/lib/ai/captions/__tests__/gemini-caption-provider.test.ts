@@ -64,6 +64,7 @@ describe("GeminiCaptionProvider", () => {
   });
 
   it.each([
+    [500, "AI_GENERATION_FAILED", true, true],
     [401, "MISSING_CONFIGURATION", false, false],
     [403, "MISSING_CONFIGURATION", false, false],
     [429, "PROVIDER_RATE_LIMITED", true, false],
@@ -84,5 +85,46 @@ describe("GeminiCaptionProvider", () => {
     expect(error).toBeInstanceOf(CaptionProviderError);
     expect(error).toMatchObject({ code: "PROVIDER_TIMEOUT", retryable: true, fallbackEligible: true });
     expect((error as Error).message).not.toContain(imageBase64);
+  });
+
+  it("marks a network failure as retryable and fallback eligible", async () => {
+    const fetch = vi.fn().mockRejectedValue(new TypeError("fetch failed"));
+
+    await expect(new GeminiCaptionProvider({ apiKey, fetch }).generateCaptions(input)).rejects.toMatchObject({
+      code: "AI_GENERATION_FAILED",
+      retryable: true,
+      fallbackEligible: true,
+    });
+  });
+
+  it("classifies a safety-blocked 200 response without attempting to parse captions", async () => {
+    const fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      promptFeedback: { blockReason: "SAFETY" },
+      candidates: [],
+    }), { status: 200 }));
+
+    await expect(new GeminiCaptionProvider({ apiKey, fetch }).generateCaptions(input)).rejects.toMatchObject({
+      code: "CONTENT_NOT_ALLOWED",
+      retryable: false,
+      fallbackEligible: false,
+    });
+  });
+
+  it("propagates caller cancellation to the active upstream fetch", async () => {
+    const fetch = vi.fn().mockImplementation((_url: string, init: RequestInit) =>
+      new Promise<Response>((_resolve, reject) => {
+        init.signal?.addEventListener("abort", () => reject(new DOMException("Aborted", "AbortError")), { once: true });
+      }),
+    );
+    const caller = new AbortController();
+    const provider = new GeminiCaptionProvider({ apiKey, timeoutMs: 50, fetch });
+    const pending = provider.generateCaptions(input, { signal: caller.signal });
+    caller.abort();
+
+    await expect(pending).rejects.toMatchObject({
+      code: "AI_GENERATION_FAILED",
+      retryable: false,
+      fallbackEligible: false,
+    });
   });
 });

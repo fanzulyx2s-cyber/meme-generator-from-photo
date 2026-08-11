@@ -69,6 +69,114 @@ describe("handleAiCaptionRequest", () => {
     expect(diagnostics.emit).toHaveBeenCalledWith("AI_CAPTION_FALLBACK", expect.objectContaining({ fallbackUsed: true }));
   });
 
+  it("retries the primary model once after a fast transient 502", async () => {
+    const models: string[] = [];
+    let primaryAttempts = 0;
+    const diagnostics = { emit: vi.fn() };
+    const result = await handleAiCaptionRequest({
+      requestBody: successBody,
+      env: { AI_CAPTIONS_ENABLED: "true", GEMINI_API_KEY: "synthetic-test-key" },
+      diagnostics,
+      retryDelayMs: 0,
+      providerFactory: (options) => {
+        models.push(options.model ?? "");
+        return {
+          ...successProvider,
+          generateCaptions: async () => {
+            primaryAttempts += 1;
+            if (primaryAttempts === 1) {
+              throw new CaptionProviderError({
+                code: "AI_GENERATION_FAILED",
+                message: "safe",
+                retryable: true,
+                fallbackEligible: true,
+                cause: { status: 502 },
+              });
+            }
+            return successProvider.generateCaptions();
+          },
+        };
+      },
+    });
+
+    expect(result).toMatchObject({ ok: true, fallbackUsed: false });
+    expect(models).toEqual(["gemini-3.5-flash-lite", "gemini-3.5-flash-lite"]);
+    expect(diagnostics.emit).toHaveBeenCalledWith("AI_CAPTION_RETRY", expect.objectContaining({ retryUsed: true, attempt: 2 }));
+  });
+
+  it("retries the primary once and then uses exactly one fallback", async () => {
+    const models: string[] = [];
+    const result = await handleAiCaptionRequest({
+      requestBody: successBody,
+      env: { AI_CAPTIONS_ENABLED: "true", GEMINI_API_KEY: "synthetic-test-key" },
+      retryDelayMs: 0,
+      providerFactory: (options) => {
+        models.push(options.model ?? "");
+        if (options.model === "gemini-3.5-flash-lite") {
+          return {
+            ...successProvider,
+            generateCaptions: async () => {
+              throw new CaptionProviderError({ code: "AI_GENERATION_FAILED", message: "safe", retryable: true, fallbackEligible: true, cause: { status: 503 } });
+            },
+          };
+        }
+        return successProvider;
+      },
+    });
+
+    expect(result).toMatchObject({ ok: true, fallbackUsed: true });
+    expect(models).toEqual(["gemini-3.5-flash-lite", "gemini-3.5-flash-lite", "gemini-3.1-flash-lite"]);
+  });
+
+  it("falls back directly after upstream 504 without retrying the primary", async () => {
+    const models: string[] = [];
+    const result = await handleAiCaptionRequest({
+      requestBody: successBody,
+      env: { AI_CAPTIONS_ENABLED: "true", GEMINI_API_KEY: "synthetic-test-key" },
+      retryDelayMs: 0,
+      providerFactory: (options) => {
+        models.push(options.model ?? "");
+        if (options.model === "gemini-3.5-flash-lite") {
+          return {
+            ...successProvider,
+            generateCaptions: async () => {
+              throw new CaptionProviderError({ code: "AI_GENERATION_FAILED", message: "safe", retryable: true, fallbackEligible: true, cause: { status: 504 } });
+            },
+          };
+        }
+        return successProvider;
+      },
+    });
+
+    expect(result).toMatchObject({ ok: true, fallbackUsed: true });
+    expect(models).toEqual(["gemini-3.5-flash-lite", "gemini-3.1-flash-lite"]);
+  });
+
+  it("caps each provider attempt and passes a cancellation signal", async () => {
+    const caller = new AbortController();
+    const timeouts: number[] = [];
+    const signals: Array<AbortSignal | undefined> = [];
+    const result = await handleAiCaptionRequest({
+      requestBody: successBody,
+      env: { AI_CAPTIONS_ENABLED: "true", GEMINI_API_KEY: "synthetic-test-key", AI_CAPTION_TIMEOUT_MS: "45000" },
+      requestSignal: caller.signal,
+      providerFactory: (options) => {
+        timeouts.push(options.timeoutMs ?? 0);
+        return {
+          ...successProvider,
+          generateCaptions: async (_input, generateOptions) => {
+            signals.push(generateOptions?.signal);
+            return successProvider.generateCaptions();
+          },
+        };
+      },
+    });
+
+    expect(result).toMatchObject({ ok: true });
+    expect(timeouts).toEqual([15_000]);
+    expect(signals[0]).toBeDefined();
+  });
+
   it.each([
     [new CaptionProviderError({ code: "MISSING_CONFIGURATION", message: "safe" }), "401"],
     [new CaptionProviderError({ code: "PROVIDER_RATE_LIMITED", message: "safe" }), "429"],

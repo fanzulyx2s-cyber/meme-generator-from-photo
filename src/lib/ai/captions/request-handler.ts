@@ -1,5 +1,5 @@
 import { CaptionProviderError } from "./caption-provider";
-import { fallbackAiCaptionModel, readAiCaptionConfig } from "./config";
+import { defaultAiCaptionRequestTimeoutMs, defaultAiCaptionTimeoutMs, fallbackAiCaptionModel, readAiCaptionConfig } from "./config";
 import { createCaptionProvider } from "./create-caption-provider";
 import { MAX_IMAGE_BYTES, generateCaptionsRequestSchema } from "./schema";
 import type { AiCaptionDiagnostics } from "./diagnostics";
@@ -7,6 +7,7 @@ import type { CaptionProvider } from "./caption-provider";
 import type { AiCaptionEnvironment } from "./config";
 import type { CreateCaptionProviderOptions } from "./create-caption-provider";
 import type { AiCaptionErrorCode, GenerateCaptionsResult } from "./types";
+import { getSafeUpstreamStatus } from "./diagnostics";
 
 type ErrorResult = { ok: false; status: number; error: { code: AiCaptionErrorCode; message: string } };
 type SuccessResult = { ok: true; captions: GenerateCaptionsResult["captions"]; usageMetadata?: GenerateCaptionsResult["usageMetadata"]; fallbackUsed: boolean };
@@ -46,7 +47,32 @@ function inputFailure(body: unknown): ErrorResult {
   return failure("INVALID_IMAGE", "The image request is invalid.");
 }
 
-export async function handleAiCaptionRequest({ requestBody, env, providerFactory = createCaptionProvider, diagnostics, requestSignal }: { requestBody: unknown; env?: AiCaptionEnvironment; providerFactory?: ProviderFactory; diagnostics?: AiCaptionDiagnostics; requestSignal?: AbortSignal }): Promise<AiCaptionHandlerResult> {
+function shouldRetryPrimary(error: unknown): error is CaptionProviderError {
+  if (!(error instanceof CaptionProviderError) || !error.retryable || error.code !== "AI_GENERATION_FAILED") return false;
+  const status = getSafeUpstreamStatus(error.cause);
+  return status === undefined || status === 500 || status === 502 || status === 503;
+}
+
+async function waitForRetry(delayMs: number, signal: AbortSignal): Promise<void> {
+  if (delayMs <= 0 || signal.aborted) return;
+  await new Promise<void>((resolve) => {
+    const timer = setTimeout(done, delayMs);
+    function done() {
+      clearTimeout(timer);
+      signal.removeEventListener("abort", done);
+      resolve();
+    }
+    signal.addEventListener("abort", done, { once: true });
+  });
+}
+
+function providerFailure(error: unknown): ErrorResult {
+  return error instanceof CaptionProviderError
+    ? failure(error.code, error.message)
+    : failure("AI_GENERATION_FAILED", "The AI caption service could not complete the request.");
+}
+
+export async function handleAiCaptionRequest({ requestBody, env, providerFactory = createCaptionProvider, diagnostics, requestSignal, retryDelayMs = 350 }: { requestBody: unknown; env?: AiCaptionEnvironment; providerFactory?: ProviderFactory; diagnostics?: AiCaptionDiagnostics; requestSignal?: AbortSignal; retryDelayMs?: number }): Promise<AiCaptionHandlerResult> {
   const config = readAiCaptionConfig(env);
   if (!config.enabled) {
     diagnostics?.emit("AI_CAPTION_ROUTE_ERROR", { stage: "CONFIG", localStatus: 404 });
@@ -62,25 +88,65 @@ export async function handleAiCaptionRequest({ requestBody, env, providerFactory
     diagnostics?.emit("AI_CAPTION_ROUTE_ERROR", { stage: "IMAGE_VALIDATION", localStatus: statusByCode[imageError.code] });
     return failure(imageError.code, imageError.message);
   }
+  const requestController = new AbortController();
+  let requestTimedOut = false;
+  const startedAt = Date.now();
+  const deadline = startedAt + defaultAiCaptionRequestTimeoutMs;
+  const abortFromRequest = () => requestController.abort(requestSignal?.reason);
+  if (requestSignal?.aborted) abortFromRequest();
+  else requestSignal?.addEventListener("abort", abortFromRequest, { once: true });
+  const requestTimeout = setTimeout(() => {
+    requestTimedOut = true;
+    requestController.abort(new Error("timeout"));
+  }, defaultAiCaptionRequestTimeoutMs);
   const generate = async (model: string) => {
-    const provider = providerFactory({ providerName: config.provider, apiKey: config.apiKey, model, timeoutMs: config.timeoutMs, diagnostics });
-    return provider.generateCaptions(parsed.data);
+    const remainingMs = Math.max(1, deadline - Date.now());
+    const timeoutMs = Math.max(1, Math.min(config.timeoutMs, defaultAiCaptionTimeoutMs, remainingMs));
+    const provider = providerFactory({ providerName: config.provider, apiKey: config.apiKey, model, timeoutMs, diagnostics });
+    return provider.generateCaptions(parsed.data, { signal: requestController.signal });
   };
   try {
-    const result = await generate(config.model);
-    return { ok: true, captions: result.captions, usageMetadata: result.usageMetadata, fallbackUsed: false };
-  } catch (error) {
-    if (error instanceof CaptionProviderError && error.fallbackEligible && !requestSignal?.aborted && config.provider === "gemini" && config.model !== fallbackAiCaptionModel) {
+    let primaryError: unknown;
+    try {
+      const result = await generate(config.model);
+      return { ok: true, captions: result.captions, usageMetadata: result.usageMetadata, fallbackUsed: false };
+    } catch (error) {
+      primaryError = error;
+    }
+
+    if (shouldRetryPrimary(primaryError) && !requestController.signal.aborted) {
+      diagnostics?.emit("AI_CAPTION_RETRY", {
+        stage: "GOOGLE_API_CALL",
+        modelRole: "primary",
+        attempt: 2,
+        retryUsed: true,
+        upstreamStatus: getSafeUpstreamStatus(primaryError.cause),
+      });
+      await waitForRetry(retryDelayMs, requestController.signal);
+      if (!requestController.signal.aborted) {
+        try {
+          const result = await generate(config.model);
+          return { ok: true, captions: result.captions, usageMetadata: result.usageMetadata, fallbackUsed: false };
+        } catch (error) {
+          primaryError = error;
+        }
+      }
+    }
+
+    if (requestTimedOut) return failure("PROVIDER_TIMEOUT", "The AI caption service timed out. Please try again.");
+    if (requestSignal?.aborted) return providerFailure(primaryError);
+    if (primaryError instanceof CaptionProviderError && primaryError.fallbackEligible && config.provider === "gemini" && config.model !== fallbackAiCaptionModel) {
       diagnostics?.emit("AI_CAPTION_FALLBACK", { stage: "GOOGLE_API_CALL", fallbackUsed: true });
       try {
         const result = await generate(fallbackAiCaptionModel);
         return { ok: true, captions: result.captions, usageMetadata: result.usageMetadata, fallbackUsed: true };
       } catch (fallbackError) {
-        if (fallbackError instanceof CaptionProviderError) return failure(fallbackError.code, fallbackError.message);
-        return failure("AI_GENERATION_FAILED", "The AI caption service could not complete the request.");
+        return providerFailure(fallbackError);
       }
     }
-    if (error instanceof CaptionProviderError) return failure(error.code, error.message);
-    return failure("AI_GENERATION_FAILED", "The AI caption service could not complete the request.");
+    return providerFailure(primaryError);
+  } finally {
+    clearTimeout(requestTimeout);
+    requestSignal?.removeEventListener("abort", abortFromRequest);
   }
 }

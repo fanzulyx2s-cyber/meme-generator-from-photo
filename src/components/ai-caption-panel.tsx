@@ -37,10 +37,12 @@ export function AiCaptionPanel({ file, onUseCaption, onReset }: { file: File; on
   const [captions, setCaptions] = useState<MemeCaption[]>([]);
   const [error, setError] = useState<AiCaptionClientError | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const workingRef = useRef(false);
 
   const reset = useCallback(() => {
     abortRef.current?.abort();
     abortRef.current = null;
+    workingRef.current = false;
     setState("intro");
     setCaptions([]);
     setError(null);
@@ -50,6 +52,8 @@ export function AiCaptionPanel({ file, onUseCaption, onReset }: { file: File; on
   useEffect(() => reset, [file, reset]);
 
   async function generate() {
+    if (workingRef.current) return;
+    workingRef.current = true;
     const controller = new AbortController();
     abortRef.current = controller;
     setError(null);
@@ -71,7 +75,10 @@ export function AiCaptionPanel({ file, onUseCaption, onReset }: { file: File; on
       setError(clientError);
       setState("error");
     } finally {
-      if (abortRef.current === controller) abortRef.current = null;
+      if (abortRef.current === controller) {
+        abortRef.current = null;
+        workingRef.current = false;
+      }
     }
   }
 

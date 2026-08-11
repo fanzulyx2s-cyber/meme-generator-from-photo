@@ -8,8 +8,12 @@ import type {
 export interface CaptionProvider {
   readonly name: CaptionProviderName;
 
-  generateCaptions(input: GenerateCaptionsInput): Promise<GenerateCaptionsResult>;
+  generateCaptions(input: GenerateCaptionsInput, options?: GenerateCaptionsOptions): Promise<GenerateCaptionsResult>;
 }
+
+export type GenerateCaptionsOptions = {
+  signal?: AbortSignal;
+};
 
 export class CaptionProviderError extends Error {
   readonly code: AiCaptionErrorCode;

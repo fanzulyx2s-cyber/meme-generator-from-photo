@@ -6,6 +6,7 @@ import { handleAiCaptionRequest } from "../../../lib/ai/captions/request-handler
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const maxDuration = 45;
 
 function readComparisonUsageRequest(requestBody: unknown): { includeUsageMetadata: boolean; captionRequestBody: unknown } {
   if (typeof requestBody !== "object" || requestBody === null || !("includeUsageMetadata" in requestBody)) return { includeUsageMetadata: false, captionRequestBody: requestBody };
@@ -26,9 +27,9 @@ export async function POST(request: Request) {
   const { includeUsageMetadata, captionRequestBody } = readComparisonUsageRequest(requestBody);
   const result = await handleAiCaptionRequest({ requestBody: captionRequestBody, diagnostics, requestSignal: request.signal });
   if (result.ok) {
-    diagnostics.emit("AI_CAPTION_ROUTE_SUCCESS", { stage: "ROUTE_RESPONSE", localStatus: 200 });
+    diagnostics.emit("AI_CAPTION_ROUTE_SUCCESS", { stage: "ROUTE_RESPONSE", localStatus: 200, fallbackUsed: result.fallbackUsed, outcome: "success" });
     return NextResponse.json({ captions: result.captions, ...(includeUsageMetadata ? { usageMetadata: result.usageMetadata ?? null } : {}) });
   }
-  diagnostics.emit("AI_CAPTION_ROUTE_ERROR", { stage: "ROUTE_RESPONSE", localStatus: result.status });
+  diagnostics.emit("AI_CAPTION_ROUTE_ERROR", { stage: "ROUTE_RESPONSE", localStatus: result.status, errorType: result.error.code, outcome: "failure" });
   return NextResponse.json({ error: result.error }, { status: result.status });
 }

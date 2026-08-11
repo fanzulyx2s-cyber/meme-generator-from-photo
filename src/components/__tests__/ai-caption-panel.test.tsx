@@ -2,7 +2,7 @@
 
 import "@testing-library/jest-dom/vitest";
 
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AiCaptionPanel } from "../ai-caption-panel";
@@ -13,7 +13,10 @@ const { compressImageForAi, requestAiCaptions } = vi.hoisted(() => ({
 }));
 
 vi.mock("../../lib/ai/captions/browser-image", () => ({ compressImageForAi }));
-vi.mock("../../lib/ai/captions/client", () => ({ requestAiCaptions }));
+vi.mock("../../lib/ai/captions/client", async () => ({
+  ...(await vi.importActual<typeof import("../../lib/ai/captions/client")>("../../lib/ai/captions/client")),
+  requestAiCaptions,
+}));
 
 const createImageFile = (): File =>
   new File([new Uint8Array([1, 2, 3])], "synthetic-image.jpg", { type: "image/jpeg" });
@@ -82,5 +85,25 @@ describe("AiCaptionPanel", () => {
 
     expect(screen.getByRole("button", { name: "Generate AI Captions" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Use This Caption" })).not.toBeInTheDocument();
+  });
+
+  it("ignores rapid duplicate generate submissions", async () => {
+    let resolvePreparation: ((value: { imageBase64: string; mimeType: "image/jpeg"; byteSize: number; width: number; height: number }) => void) | undefined;
+    compressImageForAi.mockReturnValue(new Promise((resolve) => { resolvePreparation = resolve; }));
+    requestAiCaptions.mockResolvedValue(Array.from({ length: 5 }, () => ({ topText: "TOP", bottomText: "BOTTOM" })));
+    render(<AiCaptionPanel file={createImageFile()} onUseCaption={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Generate AI Captions" }));
+    fireEvent.click(screen.getByRole("button", { name: "Continue With AI" }));
+    const generateButton = screen.getByRole("button", { name: "Generate 5 Captions" });
+    act(() => {
+      generateButton.click();
+      generateButton.click();
+    });
+
+    expect(compressImageForAi).toHaveBeenCalledTimes(1);
+    resolvePreparation?.({ imageBase64: "runtime-value", mimeType: "image/jpeg", byteSize: 12, width: 8, height: 8 });
+    expect(await screen.findAllByRole("button", { name: "Use This Caption" })).toHaveLength(5);
+    expect(requestAiCaptions).toHaveBeenCalledTimes(1);
   });
 });

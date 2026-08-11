@@ -5,7 +5,7 @@ import type { AiCaptionErrorCode, CaptionStyle, ImageMimeType, MemeCaption } fro
 type ClientErrorCode = AiCaptionErrorCode | "REQUEST_ABORTED";
 type Fetcher = typeof fetch;
 
-export const aiCaptionClientTimeoutMs = 35_000;
+export const aiCaptionClientTimeoutMs = 42_000;
 
 const messageByCode: Record<ClientErrorCode, string> = {
   AI_DISABLED: "AI captions are not available right now.",
@@ -66,7 +66,11 @@ export async function requestAiCaptions({
   const controller = new AbortController();
   const abort = () => controller.abort();
   signal?.addEventListener("abort", abort, { once: true });
-  const timeout = globalThis.setTimeout(abort, timeoutMs);
+  let didTimeout = false;
+  const timeout = globalThis.setTimeout(() => {
+    didTimeout = true;
+    controller.abort();
+  }, timeoutMs);
   try {
     const response = await fetcher("/api/ai-meme-captions", {
       method: "POST",
@@ -86,6 +90,8 @@ export async function requestAiCaptions({
     return parsed.data.captions;
   } catch (error) {
     if (error instanceof AiCaptionClientError) throw error;
+    if (signal?.aborted) throw new AiCaptionClientError("REQUEST_ABORTED");
+    if (didTimeout) throw new AiCaptionClientError("PROVIDER_TIMEOUT");
     if (controller.signal.aborted) throw new AiCaptionClientError("REQUEST_ABORTED");
     throw new AiCaptionClientError("AI_GENERATION_FAILED");
   } finally {

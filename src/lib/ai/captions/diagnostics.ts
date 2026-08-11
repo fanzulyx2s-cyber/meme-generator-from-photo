@@ -1,3 +1,5 @@
+import type { AiCaptionErrorCode } from "./types";
+
 export type AiCaptionDiagnosticStage =
   | "ROUTE_ENTRY"
   | "CONFIG"
@@ -25,6 +27,8 @@ type GoogleStatus =
 type DiagnosticEvent =
   | "AI_CAPTION_ROUTE_START"
   | "AI_CAPTION_PROVIDER_START"
+  | "AI_CAPTION_PROVIDER_SUCCESS"
+  | "AI_CAPTION_RETRY"
   | "AI_CAPTION_UPSTREAM_ERROR"
   | "AI_CAPTION_RESPONSE_EXTRACTION_ERROR"
   | "AI_CAPTION_ZOD_ERROR"
@@ -43,6 +47,12 @@ type DiagnosticFields = {
   apiStyle?: "INTERACTIONS" | "GENERATE_CONTENT_REST";
   elapsedMs?: number;
   fallbackUsed?: boolean;
+  modelRole?: "primary" | "fallback";
+  attempt?: number;
+  retryUsed?: boolean;
+  errorType?: AiCaptionErrorCode | "REQUEST_ABORTED";
+  attemptElapsedMs?: number;
+  outcome?: "success" | "failure";
 };
 
 export type AiCaptionDiagnostics = {

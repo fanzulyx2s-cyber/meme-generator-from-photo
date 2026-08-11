@@ -3,7 +3,7 @@ import { defaultAiCaptionModel } from "../config";
 import { getSafeErrorName, getSafeGoogleStatus, getSafeSdkCode, getSafeUpstreamStatus, isTimeoutError } from "../diagnostics";
 import { buildMemeCaptionPrompt } from "../prompt";
 import { geminiCaptionResponseJsonSchema, parseGenerateCaptionsRequest, parseGenerateCaptionsResult } from "../schema";
-import type { CaptionProvider } from "../caption-provider";
+import type { CaptionProvider, GenerateCaptionsOptions } from "../caption-provider";
 import type { AiCaptionDiagnostics } from "../diagnostics";
 import type { GenerateCaptionsInput, GenerateCaptionsResult } from "../types";
 import type { CaptionUsageMetadata } from "../types";
@@ -45,10 +45,37 @@ function safeProviderError(error: unknown): CaptionProviderError {
   return new CaptionProviderError({
     code: "AI_GENERATION_FAILED",
     message: "The AI caption service could not complete the request.",
-    retryable: Boolean(status && status >= 500),
-    fallbackEligible: status === undefined || status === 502 || status === 503 || status === 504,
+    retryable: status === undefined || status >= 500,
+    fallbackEligible: status === undefined || status >= 500,
     cause: error,
   });
+}
+
+function isSafetyBlocked(response: unknown): boolean {
+  if (typeof response !== "object" || response === null) return false;
+  const record = response as Record<string, unknown>;
+  const promptFeedback = typeof record.promptFeedback === "object" && record.promptFeedback !== null
+    ? record.promptFeedback as Record<string, unknown>
+    : undefined;
+  if (["SAFETY", "BLOCKLIST", "PROHIBITED_CONTENT"].includes(String(promptFeedback?.blockReason ?? ""))) return true;
+  if (!Array.isArray(record.candidates)) return false;
+  return record.candidates.some((candidate) =>
+    typeof candidate === "object" && candidate !== null
+      && (candidate as Record<string, unknown>).finishReason === "SAFETY",
+  );
+}
+
+async function safeHttpError(response: Response): Promise<unknown> {
+  let googleStatus: unknown;
+  try {
+    const body = await response.json() as { error?: { status?: unknown } };
+    googleStatus = body.error?.status;
+  } catch {
+    googleStatus = undefined;
+  }
+  return typeof googleStatus === "string"
+    ? { status: response.status, code: googleStatus }
+    : { status: response.status };
 }
 
 function extractCandidateText(response: unknown): string | undefined {
@@ -96,17 +123,31 @@ export class GeminiCaptionProvider implements CaptionProvider {
     this.diagnostics = diagnostics;
   }
 
-  async generateCaptions(input: GenerateCaptionsInput): Promise<GenerateCaptionsResult> {
+  async generateCaptions(input: GenerateCaptionsInput, options: GenerateCaptionsOptions = {}): Promise<GenerateCaptionsResult> {
     const request = parseGenerateCaptionsRequest(input);
     const apiStyle = "GENERATE_CONTENT_REST";
+    const modelRole = this.model === defaultAiCaptionModel ? "primary" : "fallback";
+    const attemptStartedAt = Date.now();
     this.diagnostics?.emit("AI_CAPTION_PROVIDER_START", {
       stage: "REQUEST_BUILD",
       modelMatch: this.model === defaultAiCaptionModel,
+      modelRole,
       apiStyle,
     });
 
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(new Error("timeout")), this.timeoutMs);
+    let externallyAborted = options.signal?.aborted ?? false;
+    let timedOut = false;
+    const abortFromCaller = () => {
+      externallyAborted = true;
+      controller.abort(options.signal?.reason);
+    };
+    if (externallyAborted) abortFromCaller();
+    else options.signal?.addEventListener("abort", abortFromCaller, { once: true });
+    const timeout = setTimeout(() => {
+      timedOut = true;
+      controller.abort(new Error("timeout"));
+    }, this.timeoutMs);
     let response: Response;
     try {
       response = await this.fetch(
@@ -123,20 +164,28 @@ export class GeminiCaptionProvider implements CaptionProvider {
           }),
         },
       );
-      if (!response.ok) throw { status: response.status };
+      if (!response.ok) throw await safeHttpError(response);
     } catch (error) {
+      const providerError = externallyAborted
+        ? new CaptionProviderError({ code: "AI_GENERATION_FAILED", message: "The AI caption request was cancelled.", cause: error })
+        : safeProviderError(error);
       this.diagnostics?.emit("AI_CAPTION_UPSTREAM_ERROR", {
-        stage: isTimeoutError(error) ? "TIMEOUT" : "GOOGLE_API_CALL",
+        stage: timedOut || providerError.code === "PROVIDER_TIMEOUT" || isTimeoutError(error) ? "TIMEOUT" : "GOOGLE_API_CALL",
         upstreamStatus: getSafeUpstreamStatus(error),
         errorName: getSafeErrorName(error),
         sdkCode: getSafeSdkCode(error),
         googleStatus: getSafeGoogleStatus(error),
         modelMatch: this.model === defaultAiCaptionModel,
+        modelRole,
+        errorType: providerError.code,
+        attemptElapsedMs: Math.max(0, Date.now() - attemptStartedAt),
+        outcome: "failure",
         apiStyle,
       });
-      throw safeProviderError(error);
+      throw providerError;
     } finally {
       clearTimeout(timeout);
+      options.signal?.removeEventListener("abort", abortFromCaller);
     }
 
     let responseBody: unknown;
@@ -145,16 +194,54 @@ export class GeminiCaptionProvider implements CaptionProvider {
     } catch {
       responseBody = undefined;
     }
+    if (isSafetyBlocked(responseBody)) {
+      this.diagnostics?.emit("AI_CAPTION_RESPONSE_EXTRACTION_ERROR", {
+        stage: "RESPONSE_EXTRACTION",
+        modelMatch: this.model === defaultAiCaptionModel,
+        modelRole,
+        errorType: "CONTENT_NOT_ALLOWED",
+        attemptElapsedMs: Math.max(0, Date.now() - attemptStartedAt),
+        outcome: "failure",
+        apiStyle,
+      });
+      throw new CaptionProviderError({ code: "CONTENT_NOT_ALLOWED", message: "This image cannot be used for AI captions." });
+    }
     const outputText = extractCandidateText(responseBody);
     if (!outputText) {
-      this.diagnostics?.emit("AI_CAPTION_RESPONSE_EXTRACTION_ERROR", { stage: "RESPONSE_EXTRACTION", modelMatch: this.model === defaultAiCaptionModel, apiStyle });
+      this.diagnostics?.emit("AI_CAPTION_RESPONSE_EXTRACTION_ERROR", {
+        stage: "RESPONSE_EXTRACTION",
+        modelMatch: this.model === defaultAiCaptionModel,
+        modelRole,
+        errorType: "INVALID_PROVIDER_RESPONSE",
+        attemptElapsedMs: Math.max(0, Date.now() - attemptStartedAt),
+        outcome: "failure",
+        apiStyle,
+      });
       throw new CaptionProviderError({ code: "INVALID_PROVIDER_RESPONSE", message: "The AI caption service returned an invalid response.", retryable: true, fallbackEligible: true });
     }
 
     try {
-      return { ...parseGenerateCaptionsResult(JSON.parse(outputText)), usageMetadata: extractUsageMetadata(responseBody) };
+      const result = { ...parseGenerateCaptionsResult(JSON.parse(outputText)), usageMetadata: extractUsageMetadata(responseBody) };
+      this.diagnostics?.emit("AI_CAPTION_PROVIDER_SUCCESS", {
+        stage: "ZOD_VALIDATION",
+        modelMatch: this.model === defaultAiCaptionModel,
+        modelRole,
+        attemptElapsedMs: Math.max(0, Date.now() - attemptStartedAt),
+        outcome: "success",
+        apiStyle,
+      });
+      return result;
     } catch (error) {
-      this.diagnostics?.emit("AI_CAPTION_ZOD_ERROR", { stage: "ZOD_VALIDATION", errorName: getSafeErrorName(error), modelMatch: this.model === defaultAiCaptionModel, apiStyle });
+      this.diagnostics?.emit("AI_CAPTION_ZOD_ERROR", {
+        stage: "ZOD_VALIDATION",
+        errorName: getSafeErrorName(error),
+        errorType: "INVALID_PROVIDER_RESPONSE",
+        modelMatch: this.model === defaultAiCaptionModel,
+        modelRole,
+        attemptElapsedMs: Math.max(0, Date.now() - attemptStartedAt),
+        outcome: "failure",
+        apiStyle,
+      });
       throw new CaptionProviderError({ code: "INVALID_PROVIDER_RESPONSE", message: "The AI caption service returned an invalid response.", retryable: true, fallbackEligible: true, cause: error });
     }
   }

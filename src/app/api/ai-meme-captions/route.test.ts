@@ -52,7 +52,9 @@ describe("POST /api/ai-meme-captions", () => {
     const captions = Array.from({ length: 5 }, (_, index) => ({ topText: `TOP ${index}`, bottomText: `BOTTOM ${index}` }));
     const fetch = vi.fn()
       .mockResolvedValueOnce(new Response("{}", { status: 502 }))
+      .mockResolvedValueOnce(new Response("{}", { status: 502 }))
       .mockResolvedValueOnce(new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: JSON.stringify({ captions }) }] } }] }), { status: 200 }));
+    const info = vi.spyOn(console, "info").mockImplementation(() => undefined);
     vi.stubGlobal("fetch", fetch);
     const imageBase64 = Buffer.from("synthetic-test-image-bytes", "utf8").toString("base64");
 
@@ -60,8 +62,10 @@ describe("POST /api/ai-meme-captions", () => {
     const payload = await response.json();
 
     expect(response.status).toBe(200);
-    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(fetch).toHaveBeenCalledTimes(3);
     expect(Object.keys(payload)).toEqual(["captions"]);
     expect(payload).toMatchObject({ captions });
+    const successLog = info.mock.calls.map(([entry]) => JSON.parse(String(entry))).find((entry) => entry.event === "AI_CAPTION_ROUTE_SUCCESS");
+    expect(successLog).toMatchObject({ localStatus: 200, fallbackUsed: true });
   });
 });

@@ -3,6 +3,7 @@ import type { CaptionProviderName } from "./types";
 export const defaultAiCaptionModel = "gemini-3.5-flash-lite";
 export const fallbackAiCaptionModel = "gemini-3.1-flash-lite";
 export const defaultAiCaptionTimeoutMs = 15_000;
+export const defaultAiCaptionRequestTimeoutMs = 38_000;
 
 function readTimeoutMs(value: string | undefined): number {
   const parsed = Number(value);
