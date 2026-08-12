@@ -18,7 +18,17 @@ describe("readAiCaptionConfig", () => {
     expect(config.model).toBe("gemini-3.5-flash-lite");
     expect(config.timeoutMs).toBe(15_000);
     expect(config.hasApiKey).toBe(true);
+    expect(config.hasMistralApiKey).toBe(false);
     expect(JSON.stringify({ ...config, apiKey: undefined })).not.toContain(createTestApiKey());
+  });
+
+  it("reads the emergency provider key only from the server environment", () => {
+    const mistralApiKey = createTestApiKey();
+    const config = readAiCaptionConfig({ MISTRAL_API_KEY: mistralApiKey });
+
+    expect(config.hasMistralApiKey).toBe(true);
+    expect(config.mistralApiKey).toBe(mistralApiKey);
+    expect(JSON.stringify({ ...config, mistralApiKey: undefined })).not.toContain(mistralApiKey);
   });
 
   it("keeps the selected production primary model even when a legacy model override is present", () => {

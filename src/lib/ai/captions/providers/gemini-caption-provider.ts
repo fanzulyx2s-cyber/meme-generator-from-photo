@@ -130,6 +130,8 @@ export class GeminiCaptionProvider implements CaptionProvider {
     const attemptStartedAt = Date.now();
     this.diagnostics?.emit("AI_CAPTION_PROVIDER_START", {
       stage: "REQUEST_BUILD",
+      provider: "gemini",
+      model: this.model,
       modelMatch: this.model === defaultAiCaptionModel,
       modelRole,
       apiStyle,
@@ -171,6 +173,8 @@ export class GeminiCaptionProvider implements CaptionProvider {
         : safeProviderError(error);
       this.diagnostics?.emit("AI_CAPTION_UPSTREAM_ERROR", {
         stage: timedOut || providerError.code === "PROVIDER_TIMEOUT" || isTimeoutError(error) ? "TIMEOUT" : "GOOGLE_API_CALL",
+        provider: "gemini",
+        model: this.model,
         upstreamStatus: getSafeUpstreamStatus(error),
         errorName: getSafeErrorName(error),
         sdkCode: getSafeSdkCode(error),
@@ -197,6 +201,8 @@ export class GeminiCaptionProvider implements CaptionProvider {
     if (isSafetyBlocked(responseBody)) {
       this.diagnostics?.emit("AI_CAPTION_RESPONSE_EXTRACTION_ERROR", {
         stage: "RESPONSE_EXTRACTION",
+        provider: "gemini",
+        model: this.model,
         modelMatch: this.model === defaultAiCaptionModel,
         modelRole,
         errorType: "CONTENT_NOT_ALLOWED",
@@ -210,6 +216,8 @@ export class GeminiCaptionProvider implements CaptionProvider {
     if (!outputText) {
       this.diagnostics?.emit("AI_CAPTION_RESPONSE_EXTRACTION_ERROR", {
         stage: "RESPONSE_EXTRACTION",
+        provider: "gemini",
+        model: this.model,
         modelMatch: this.model === defaultAiCaptionModel,
         modelRole,
         errorType: "INVALID_PROVIDER_RESPONSE",
@@ -224,6 +232,8 @@ export class GeminiCaptionProvider implements CaptionProvider {
       const result = { ...parseGenerateCaptionsResult(JSON.parse(outputText)), usageMetadata: extractUsageMetadata(responseBody) };
       this.diagnostics?.emit("AI_CAPTION_PROVIDER_SUCCESS", {
         stage: "ZOD_VALIDATION",
+        provider: "gemini",
+        model: this.model,
         modelMatch: this.model === defaultAiCaptionModel,
         modelRole,
         attemptElapsedMs: Math.max(0, Date.now() - attemptStartedAt),
@@ -234,6 +244,8 @@ export class GeminiCaptionProvider implements CaptionProvider {
     } catch (error) {
       this.diagnostics?.emit("AI_CAPTION_ZOD_ERROR", {
         stage: "ZOD_VALIDATION",
+        provider: "gemini",
+        model: this.model,
         errorName: getSafeErrorName(error),
         errorType: "INVALID_PROVIDER_RESPONSE",
         modelMatch: this.model === defaultAiCaptionModel,

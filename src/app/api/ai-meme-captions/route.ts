@@ -6,7 +6,7 @@ import { handleAiCaptionRequest } from "../../../lib/ai/captions/request-handler
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = 45;
+export const maxDuration = 60;
 
 function readComparisonUsageRequest(requestBody: unknown): { includeUsageMetadata: boolean; captionRequestBody: unknown } {
   if (typeof requestBody !== "object" || requestBody === null || !("includeUsageMetadata" in requestBody)) return { includeUsageMetadata: false, captionRequestBody: requestBody };

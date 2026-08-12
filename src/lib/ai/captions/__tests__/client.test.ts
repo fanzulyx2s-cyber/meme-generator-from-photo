@@ -6,8 +6,8 @@ const createTestImageBase64 = (): string =>
   Buffer.from("synthetic-client-image", "utf8").toString("base64");
 
 describe("requestAiCaptions", () => {
-  it("keeps the client request alive long enough for one server fallback", () => {
-    expect(aiCaptionClientTimeoutMs).toBe(42_000);
+  it("keeps the client request alive through the emergency provider budget", () => {
+    expect(aiCaptionClientTimeoutMs).toBe(58_000);
   });
 
   it("reports its own deadline as a provider timeout instead of user cancellation", async () => {

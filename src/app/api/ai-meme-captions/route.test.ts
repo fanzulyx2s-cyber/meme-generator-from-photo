@@ -68,4 +68,27 @@ describe("POST /api/ai-meme-captions", () => {
     const successLog = info.mock.calls.map(([entry]) => JSON.parse(String(entry))).find((entry) => entry.event === "AI_CAPTION_ROUTE_SUCCESS");
     expect(successLog).toMatchObject({ localStatus: 200, fallbackUsed: true });
   });
+
+  it("returns only captions after the Mistral emergency fallback succeeds", async () => {
+    vi.stubEnv("AI_CAPTIONS_ENABLED", "true");
+    vi.stubEnv("GEMINI_API_KEY", "synthetic-gemini-key");
+    vi.stubEnv("MISTRAL_API_KEY", "synthetic-mistral-key");
+    const captions = Array.from({ length: 5 }, (_, index) => ({ topText: `TOP ${index}`, bottomText: `BOTTOM ${index}` }));
+    const fetch = vi.fn()
+      .mockResolvedValueOnce(new Response("{}", { status: 503 }))
+      .mockResolvedValueOnce(new Response("{}", { status: 503 }))
+      .mockResolvedValueOnce(new Response("{}", { status: 503 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify({ captions }) } }] }), { status: 200 }));
+    vi.spyOn(console, "info").mockImplementation(() => undefined);
+    vi.stubGlobal("fetch", fetch);
+    const imageBase64 = Buffer.from("synthetic-test-image-bytes", "utf8").toString("base64");
+
+    const response = await POST(new Request("http://localhost/api/ai-meme-captions", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ imageBase64, mimeType: "image/png", style: "reaction" }) }));
+    const payload = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(fetch).toHaveBeenCalledTimes(4);
+    expect(Object.keys(payload)).toEqual(["captions"]);
+    expect(payload).toEqual({ captions });
+  });
 });

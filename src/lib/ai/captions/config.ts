@@ -2,8 +2,9 @@ import type { CaptionProviderName } from "./types";
 
 export const defaultAiCaptionModel = "gemini-3.5-flash-lite";
 export const fallbackAiCaptionModel = "gemini-3.1-flash-lite";
+export const emergencyAiCaptionModel = "ministral-8b-2512";
 export const defaultAiCaptionTimeoutMs = 15_000;
-export const defaultAiCaptionRequestTimeoutMs = 38_000;
+export const defaultAiCaptionRequestTimeoutMs = 55_000;
 
 function readTimeoutMs(value: string | undefined): number {
   const parsed = Number(value);
@@ -18,11 +19,14 @@ export type AiCaptionConfig = {
   model: string;
   apiKey?: string;
   hasApiKey: boolean;
+  mistralApiKey?: string;
+  hasMistralApiKey: boolean;
   timeoutMs: number;
 };
 
 export function readAiCaptionConfig(env: AiCaptionEnvironment = process.env): AiCaptionConfig {
   const apiKey = env.GEMINI_API_KEY?.trim() || undefined;
+  const mistralApiKey = env.MISTRAL_API_KEY?.trim() || undefined;
 
   return {
     enabled: env.AI_CAPTIONS_ENABLED === "true",
@@ -33,6 +37,8 @@ export function readAiCaptionConfig(env: AiCaptionEnvironment = process.env): Ai
     model: defaultAiCaptionModel,
     apiKey,
     hasApiKey: Boolean(apiKey),
+    mistralApiKey,
+    hasMistralApiKey: Boolean(mistralApiKey),
     timeoutMs: readTimeoutMs(env.AI_CAPTION_TIMEOUT_MS),
   };
 }

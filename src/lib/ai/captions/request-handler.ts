@@ -1,5 +1,5 @@
 import { CaptionProviderError } from "./caption-provider";
-import { defaultAiCaptionRequestTimeoutMs, defaultAiCaptionTimeoutMs, fallbackAiCaptionModel, readAiCaptionConfig } from "./config";
+import { defaultAiCaptionRequestTimeoutMs, defaultAiCaptionTimeoutMs, emergencyAiCaptionModel, fallbackAiCaptionModel, readAiCaptionConfig } from "./config";
 import { createCaptionProvider } from "./create-caption-provider";
 import { MAX_IMAGE_BYTES, generateCaptionsRequestSchema } from "./schema";
 import type { AiCaptionDiagnostics } from "./diagnostics";
@@ -99,16 +99,16 @@ export async function handleAiCaptionRequest({ requestBody, env, providerFactory
     requestTimedOut = true;
     requestController.abort(new Error("timeout"));
   }, defaultAiCaptionRequestTimeoutMs);
-  const generate = async (model: string) => {
+  const generate = async ({ providerName = config.provider, apiKey = config.apiKey, model }: { providerName?: string; apiKey?: string; model: string }) => {
     const remainingMs = Math.max(1, deadline - Date.now());
     const timeoutMs = Math.max(1, Math.min(config.timeoutMs, defaultAiCaptionTimeoutMs, remainingMs));
-    const provider = providerFactory({ providerName: config.provider, apiKey: config.apiKey, model, timeoutMs, diagnostics });
+    const provider = providerFactory({ providerName, apiKey, model, timeoutMs, diagnostics });
     return provider.generateCaptions(parsed.data, { signal: requestController.signal });
   };
   try {
     let primaryError: unknown;
     try {
-      const result = await generate(config.model);
+      const result = await generate({ model: config.model });
       return { ok: true, captions: result.captions, usageMetadata: result.usageMetadata, fallbackUsed: false };
     } catch (error) {
       primaryError = error;
@@ -125,7 +125,7 @@ export async function handleAiCaptionRequest({ requestBody, env, providerFactory
       await waitForRetry(retryDelayMs, requestController.signal);
       if (!requestController.signal.aborted) {
         try {
-          const result = await generate(config.model);
+          const result = await generate({ model: config.model });
           return { ok: true, captions: result.captions, usageMetadata: result.usageMetadata, fallbackUsed: false };
         } catch (error) {
           primaryError = error;
@@ -138,9 +138,24 @@ export async function handleAiCaptionRequest({ requestBody, env, providerFactory
     if (primaryError instanceof CaptionProviderError && primaryError.fallbackEligible && config.provider === "gemini" && config.model !== fallbackAiCaptionModel) {
       diagnostics?.emit("AI_CAPTION_FALLBACK", { stage: "GOOGLE_API_CALL", fallbackUsed: true });
       try {
-        const result = await generate(fallbackAiCaptionModel);
+        const result = await generate({ model: fallbackAiCaptionModel });
         return { ok: true, captions: result.captions, usageMetadata: result.usageMetadata, fallbackUsed: true };
       } catch (fallbackError) {
+        if (!requestController.signal.aborted && config.mistralApiKey) {
+          diagnostics?.emit("AI_CAPTION_FALLBACK", {
+            stage: "MISTRAL_API_CALL",
+            provider: "mistral",
+            model: emergencyAiCaptionModel,
+            modelRole: "emergency",
+            fallbackUsed: true,
+          });
+          try {
+            const result = await generate({ providerName: "mistral", apiKey: config.mistralApiKey, model: emergencyAiCaptionModel });
+            return { ok: true, captions: result.captions, usageMetadata: result.usageMetadata, fallbackUsed: true };
+          } catch (mistralError) {
+            return providerFailure(mistralError);
+          }
+        }
         return providerFailure(fallbackError);
       }
     }

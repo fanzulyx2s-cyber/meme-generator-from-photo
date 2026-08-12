@@ -102,6 +102,48 @@ describe("handleAiCaptionRequest", () => {
     expect(result).toMatchObject({ ok: true, fallbackUsed: false });
     expect(models).toEqual(["gemini-3.5-flash-lite", "gemini-3.5-flash-lite"]);
     expect(diagnostics.emit).toHaveBeenCalledWith("AI_CAPTION_RETRY", expect.objectContaining({ retryUsed: true, attempt: 2 }));
+    expect(models).not.toContain("ministral-8b-2512");
+  });
+
+  it("uses Mistral once after Gemini fallback fails", async () => {
+    const calls: string[] = [];
+    const result = await handleAiCaptionRequest({
+      requestBody: successBody,
+      env: { AI_CAPTIONS_ENABLED: "true", GEMINI_API_KEY: "synthetic-gemini-key", MISTRAL_API_KEY: "synthetic-mistral-key" },
+      retryDelayMs: 0,
+      providerFactory: (options) => {
+        calls.push(`${options.providerName}:${options.model}`);
+        if (options.providerName === "mistral") return successProvider;
+        return { ...successProvider, generateCaptions: async () => { throw new CaptionProviderError({ code: "AI_GENERATION_FAILED", message: "safe", retryable: true, fallbackEligible: true, cause: { status: 503 } }); } };
+      },
+    });
+
+    expect(result).toMatchObject({ ok: true, fallbackUsed: true });
+    expect(calls).toEqual([
+      "gemini:gemini-3.5-flash-lite",
+      "gemini:gemini-3.5-flash-lite",
+      "gemini:gemini-3.1-flash-lite",
+      "mistral:ministral-8b-2512",
+    ]);
+  });
+
+  it("returns the Mistral failure after every provider fails", async () => {
+    const calls: string[] = [];
+    const result = await handleAiCaptionRequest({
+      requestBody: successBody,
+      env: { AI_CAPTIONS_ENABLED: "true", GEMINI_API_KEY: "synthetic-gemini-key", MISTRAL_API_KEY: "synthetic-mistral-key" },
+      retryDelayMs: 0,
+      providerFactory: (options) => {
+        calls.push(`${options.providerName}:${options.model}`);
+        const error = options.providerName === "mistral"
+          ? new CaptionProviderError({ code: "PROVIDER_RATE_LIMITED", message: "safe-mistral" })
+          : new CaptionProviderError({ code: "AI_GENERATION_FAILED", message: "safe-gemini", retryable: true, fallbackEligible: true, cause: { status: 503 } });
+        return { ...successProvider, generateCaptions: async () => { throw error; } };
+      },
+    });
+
+    expect(result).toEqual({ ok: false, status: 429, error: { code: "PROVIDER_RATE_LIMITED", message: "safe-mistral" } });
+    expect(calls.at(-1)).toBe("mistral:ministral-8b-2512");
   });
 
   it("retries the primary once and then uses exactly one fallback", async () => {

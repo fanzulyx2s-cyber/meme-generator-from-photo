@@ -6,6 +6,7 @@ export type AiCaptionDiagnosticStage =
   | "IMAGE_VALIDATION"
   | "REQUEST_BUILD"
   | "GOOGLE_API_CALL"
+  | "MISTRAL_API_CALL"
   | "RESPONSE_EXTRACTION"
   | "ZOD_VALIDATION"
   | "ROUTE_RESPONSE"
@@ -44,10 +45,12 @@ type DiagnosticFields = {
   sdkCode?: string | number;
   googleStatus?: GoogleStatus;
   modelMatch?: boolean;
-  apiStyle?: "INTERACTIONS" | "GENERATE_CONTENT_REST";
+  apiStyle?: "INTERACTIONS" | "GENERATE_CONTENT_REST" | "MISTRAL_CHAT_REST";
   elapsedMs?: number;
   fallbackUsed?: boolean;
-  modelRole?: "primary" | "fallback";
+  modelRole?: "primary" | "fallback" | "emergency";
+  provider?: "gemini" | "mistral";
+  model?: string;
   attempt?: number;
   retryUsed?: boolean;
   errorType?: AiCaptionErrorCode | "REQUEST_ABORTED";

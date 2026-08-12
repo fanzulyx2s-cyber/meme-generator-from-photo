@@ -59,3 +59,17 @@ This checkpoint hardens the existing Gemini caption path without changing the pr
 3. Run the same non-destructive browser checks against Preview.
 4. Only after those gates, perform no more than three authorized real Gemini caption requests using a non-user test image and the approved cost ceiling.
 5. Do not merge `main` or change Production settings.
+
+## Mistral emergency provider checkpoint — 2026-08-13
+
+- Emergency provider: Mistral Chat Completions REST using `ministral-8b-2512` and native server-side `fetch`.
+- Final serial order: Gemini primary, one eligible primary retry, Gemini fallback, then one Mistral emergency attempt.
+- Mistral is reached only after the Gemini fallback was actually attempted and failed; it is not used for local validation errors, user cancellation, safety blocks, HTTP 400, 401, 403, or 429 on the primary path.
+- Mistral has one attempt only, a 15-second provider cap, and shares the 55-second server request budget. Browser timeout is 58 seconds and route maximum duration is 60 seconds.
+- The same compressed in-memory image, prompt builder, five-caption JSON schema, and Zod result validation are reused. No image is written to disk.
+- Successful browser responses remain exactly `{ captions }`; provider, model, latency, status, error type, and fallback state are limited to safe server diagnostics.
+- AI mock tests: 168/168 passed, skip 0.
+- Lint: 0 errors; the same four pre-existing warnings remain in unchanged editor code.
+- TypeScript and Next.js build: passed.
+- Local Playwright mock regression: passed on desktop and 390px mobile, including expected Retry, five captions, Use This Caption, Console/Network checks, and all six ratio/frame combinations.
+- No real Gemini or Mistral request was made during implementation or localhost verification.

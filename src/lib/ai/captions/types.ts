@@ -35,7 +35,7 @@ export type GenerateCaptionsResult = {
   usageMetadata?: CaptionUsageMetadata;
 };
 
-export const captionProviderNames = ["mock", "gemini", "openai", "qwen"] as const;
+export const captionProviderNames = ["mock", "gemini", "mistral", "openai", "qwen"] as const;
 
 export type CaptionProviderName = (typeof captionProviderNames)[number];
 

@@ -5,7 +5,7 @@ import type { AiCaptionErrorCode, CaptionStyle, ImageMimeType, MemeCaption } fro
 type ClientErrorCode = AiCaptionErrorCode | "REQUEST_ABORTED";
 type Fetcher = typeof fetch;
 
-export const aiCaptionClientTimeoutMs = 42_000;
+export const aiCaptionClientTimeoutMs = 58_000;
 
 const messageByCode: Record<ClientErrorCode, string> = {
   AI_DISABLED: "AI captions are not available right now.",
