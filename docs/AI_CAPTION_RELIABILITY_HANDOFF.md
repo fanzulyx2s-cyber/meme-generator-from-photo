@@ -73,3 +73,15 @@ This checkpoint hardens the existing Gemini caption path without changing the pr
 - TypeScript and Next.js build: passed.
 - Local Playwright mock regression: passed on desktop and 390px mobile, including expected Retry, five captions, Use This Caption, Console/Network checks, and all six ratio/frame combinations.
 - No real Gemini or Mistral request was made during implementation or localhost verification.
+
+## Protected Preview acceptance — 2026-08-22
+
+- Deployment `dpl_HGUyZx7rfLf5mLK5tmPJDzB5xwtY` for commit `4ea270833a473cb16dac1db6a7989f3dbc2ac4a8` was confirmed Ready with target `preview`, branch `feature/seo-gemini-final`, and project `meme-generator-from-photo` in the expected Vercel team.
+- The official `x-vercel-protection-bypass` header returned HTTP 200 and did not redirect to Vercel `/sso-api`. The bypass value was not printed, recorded, or added to the repository.
+- Protected Preview Playwright passed with a fixed public demo image and a mocked caption route: expected HTTP 502 then Retry HTTP 200, rapid double-click produced one initial request, five captions rendered, Use This Caption worked, all six ratio/frame combinations rendered, and PNG download completed.
+- The six combinations were Square, Portrait, and Story with Frame On and Frame Off. No unexpected Console errors, Network failures, or HTTP failures remained; the intentionally mocked Retry 502 was treated as expected.
+- One authorized real Preview caption action completed with HTTP 200, five captions, and Use This Caption success. Browser-observed API duration was about 4.4 seconds.
+- Safe server diagnostics recorded a successful `gemini-3.5-flash-lite` primary attempt in about 2.5 seconds with `fallbackUsed: false`; Gemini fallback and Mistral emergency fallback were not invoked.
+- Real Gemini caption actions completed in this acceptance: one. Real Mistral calls completed: zero.
+- The Mistral disaster path remains mock-verified but not real-provider verified. A normal successful Gemini request cannot safely force that path; do not introduce a public test override, alter Preview secrets, or deliberately degrade Gemini merely to trigger it.
+- Production, `main`, domains, DNS, and Production environment variables were not changed.
