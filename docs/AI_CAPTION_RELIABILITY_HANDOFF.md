@@ -57,8 +57,7 @@ This checkpoint hardens the existing Gemini caption path without changing the pr
 1. Commit and push only `feature/seo-gemini-final`.
 2. Wait for the Vercel Preview deployment to become Ready.
 3. Run the same non-destructive browser checks against Preview.
-4. Only after those gates, perform no more than three authorized real Gemini caption requests using a non-user test image and the approved cost ceiling.
-5. Do not merge `main` or change Production settings.
+4. After Preview acceptance, request separate authorization before any `main` merge or Production deployment.
 
 ## Mistral emergency provider checkpoint — 2026-08-13
 
@@ -83,5 +82,14 @@ This checkpoint hardens the existing Gemini caption path without changing the pr
 - One authorized real Preview caption action completed with HTTP 200, five captions, and Use This Caption success. Browser-observed API duration was about 4.4 seconds.
 - Safe server diagnostics recorded a successful `gemini-3.5-flash-lite` primary attempt in about 2.5 seconds with `fallbackUsed: false`; Gemini fallback and Mistral emergency fallback were not invoked.
 - Real Gemini caption actions completed in this acceptance: one. Real Mistral calls completed: zero.
-- The Mistral disaster path remains mock-verified but not real-provider verified. A normal successful Gemini request cannot safely force that path; do not introduce a public test override, alter Preview secrets, or deliberately degrade Gemini merely to trigger it.
+- The Mistral disaster path was mock-verified; its direct real-provider acceptance is recorded below. A normal successful Gemini request cannot safely force the full Gemini-to-Mistral disaster sequence; do not introduce a public test override, alter Preview secrets, or deliberately degrade Gemini merely to trigger it.
 - Production, `main`, domains, DNS, and Production environment variables were not changed.
+
+## Mistral direct real-provider acceptance — 2026-08-22
+
+- Direct `MistralCaptionProvider` validation passed with the existing tracked public demo image. It did not call the API Route, Gemini, or the complete fallback chain.
+- The one permitted provider request returned HTTP 200. The provider made exactly one request with no retry, returned exactly five captions, and every top/bottom text value was non-empty.
+- The result passed the existing Zod validation and normalized to the existing `{ captions }` contract. No caption text, prompt, image bytes, Base64, request body, raw response, or secret was retained in acceptance output.
+- Earlier no-response attempts were traced to the local DNS/proxy path rather than application code, Mistral credentials, model access, schema validation, or quota. With iKuuuVPN TUN/Fake-IP routing active, Node TLS 1.3 and certificate verification completed and the direct provider request passed.
+- This accepts direct Mistral provider connectivity and contract compatibility. The serial Gemini-to-Mistral fallback sequence remains covered by mock and automated tests; no real end-to-end fallback was deliberately triggered.
+- The next gate is release preparation and Preview regression. Any `main` merge or Production deployment still requires separate authorization.
