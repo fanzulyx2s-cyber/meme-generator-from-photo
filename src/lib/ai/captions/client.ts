@@ -11,6 +11,8 @@ const messageByCode: Record<ClientErrorCode, string> = {
   AI_DISABLED: "AI captions are not available right now.",
   MISSING_CONFIGURATION: "AI captions are temporarily unavailable.",
   INVALID_IMAGE: "We couldn't prepare this image for AI captions.",
+  INVALID_CONTENT_TYPE: "AI captions require a valid request format.",
+  REQUEST_TOO_LARGE: "This image request is too large. Try a smaller photo.",
   IMAGE_TOO_LARGE: "This image is too large to analyze. Try a smaller photo.",
   UNSUPPORTED_IMAGE_TYPE: "AI captions support JPG, PNG, and WEBP images.",
   INVALID_STYLE: "Choose a valid caption style.",

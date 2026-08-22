@@ -55,9 +55,10 @@ export default function PrivacyPage() {
         <p>
           After consent, the browser creates a compressed image copy and sends
           it through MemePhoto AI&apos;s server endpoint to the configured AI
-          provider for caption analysis. The current implementation supports
-          Google Gemini. The provider returns text caption suggestions, which
-          remain editable in the browser.
+          provider for caption analysis. AI Caption mode may use Google Gemini.
+          If the primary service is unavailable and the defined disaster-recovery
+          conditions apply, it may use Mistral as a fallback provider. Providers
+          return text caption suggestions, which remain editable in the browser.
         </p>
         <p>
           MemePhoto AI does not intentionally save the submitted image in an

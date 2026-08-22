@@ -2,6 +2,7 @@ import { CaptionProviderError } from "./caption-provider";
 import { defaultAiCaptionRequestTimeoutMs, defaultAiCaptionTimeoutMs, emergencyAiCaptionModel, fallbackAiCaptionModel, readAiCaptionConfig } from "./config";
 import { createCaptionProvider } from "./create-caption-provider";
 import { MAX_IMAGE_BYTES, generateCaptionsRequestSchema } from "./schema";
+import { validateServerImage } from "./server-image";
 import type { AiCaptionDiagnostics } from "./diagnostics";
 import type { CaptionProvider } from "./caption-provider";
 import type { AiCaptionEnvironment } from "./config";
@@ -15,7 +16,7 @@ export type AiCaptionHandlerResult = SuccessResult | ErrorResult;
 type ProviderFactory = (options: CreateCaptionProviderOptions) => CaptionProvider;
 
 const statusByCode: Record<AiCaptionErrorCode, number> = {
-  AI_DISABLED: 404, MISSING_CONFIGURATION: 503, INVALID_IMAGE: 400, IMAGE_TOO_LARGE: 413, UNSUPPORTED_IMAGE_TYPE: 415,
+  AI_DISABLED: 404, MISSING_CONFIGURATION: 503, INVALID_IMAGE: 400, INVALID_CONTENT_TYPE: 415, REQUEST_TOO_LARGE: 413, IMAGE_TOO_LARGE: 413, UNSUPPORTED_IMAGE_TYPE: 415,
   INVALID_STYLE: 400, CONTENT_NOT_ALLOWED: 422, PROVIDER_TIMEOUT: 504, PROVIDER_RATE_LIMITED: 429,
   INVALID_PROVIDER_RESPONSE: 502, AI_GENERATION_FAILED: 502, UNSUPPORTED_PROVIDER: 503,
 };
@@ -24,7 +25,7 @@ function failure(code: AiCaptionErrorCode, message: string): ErrorResult {
   return { ok: false, status: statusByCode[code], error: { code, message } };
 }
 
-function decodeImage(base64: string): CaptionProviderError | undefined {
+async function decodeImage(base64: string, mimeType: Parameters<typeof validateServerImage>[1]): Promise<CaptionProviderError | undefined> {
   if (!/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(base64)) {
     return new CaptionProviderError({ code: "INVALID_IMAGE", message: "The image data is invalid." });
   }
@@ -34,6 +35,11 @@ function decodeImage(base64: string): CaptionProviderError | undefined {
   }
   if (bytes.byteLength > MAX_IMAGE_BYTES) {
     return new CaptionProviderError({ code: "IMAGE_TOO_LARGE", message: "The image is too large." });
+  }
+  try {
+    await validateServerImage(bytes, mimeType);
+  } catch (error) {
+    return error instanceof CaptionProviderError ? error : new CaptionProviderError({ code: "INVALID_IMAGE", message: "The image data is invalid." });
   }
   return undefined;
 }
@@ -83,7 +89,7 @@ export async function handleAiCaptionRequest({ requestBody, env, providerFactory
     diagnostics?.emit("AI_CAPTION_ROUTE_ERROR", { stage: "IMAGE_VALIDATION", localStatus: 400 });
     return inputFailure(requestBody);
   }
-  const imageError = decodeImage(parsed.data.imageBase64);
+  const imageError = await decodeImage(parsed.data.imageBase64, parsed.data.mimeType);
   if (imageError) {
     diagnostics?.emit("AI_CAPTION_ROUTE_ERROR", { stage: "IMAGE_VALIDATION", localStatus: statusByCode[imageError.code] });
     return failure(imageError.code, imageError.message);

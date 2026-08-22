@@ -5,6 +5,7 @@ import type { GenerateCaptionsInput, GenerateCaptionsResult } from "./types";
 
 export const MAX_IMAGE_BYTES = 2_000_000;
 export const MAX_IMAGE_BASE64_LENGTH = Math.ceil(MAX_IMAGE_BYTES / 3) * 4;
+export const MAX_AI_CAPTION_REQUEST_BYTES = 3_000_000;
 export const MAX_CAPTION_TEXT_LENGTH = 100;
 
 export const captionStyleSchema = z.enum(captionStyles);

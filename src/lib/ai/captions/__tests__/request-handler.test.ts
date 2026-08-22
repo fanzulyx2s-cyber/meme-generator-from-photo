@@ -3,8 +3,8 @@ import { describe, expect, it, vi } from "vitest";
 import { CaptionProviderError } from "../caption-provider";
 import { handleAiCaptionRequest } from "../request-handler";
 
-const createTestImageBase64 = (): string => Buffer.from("synthetic-test-image-bytes", "utf8").toString("base64");
-const successBody = { imageBase64: createTestImageBase64(), mimeType: "image/jpeg", style: "funny" };
+const createTestImageBase64 = (): string => "iVBORw0KGgoAAAANSUhEUgAAAAQAAAADCAIAAAA7ljmRAAAACXBIWXMAAAPoAAAD6AG1e1JrAAAADklEQVR4nGP4jwQYcHIAu4cj3ZP55DwAAAAASUVORK5CYII=";
+const successBody = { imageBase64: createTestImageBase64(), mimeType: "image/png", style: "funny" };
 const successProvider = { name: "mock" as const, generateCaptions: async () => ({ captions: Array.from({ length: 5 }, () => ({ topText: "TOP", bottomText: "BOTTOM" })) }) };
 const enabledMockEnv = { AI_CAPTIONS_ENABLED: "true", AI_CAPTION_PROVIDER: "mock" };
 
