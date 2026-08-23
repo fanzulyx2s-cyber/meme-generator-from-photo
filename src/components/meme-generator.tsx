@@ -17,6 +17,10 @@ import {
 } from "./meme-text-layout";
 import { scrollPreviewIntoViewOnMobile } from "./mobile-preview-scroll";
 import { useCreatorLicense } from "../hooks/use-creator-license";
+import {
+  getExportPolicy,
+  shouldShowCreatorUpgrade,
+} from "../lib/export-policy";
 
 const canvasSize = 1000;
 
@@ -69,6 +73,8 @@ const emojiBaseSize = 128;
 const imageBaseMaxSide = 210;
 const stickerDragMargin = 160;
 const watermarkText = "memephotoai.com";
+const freeExportCountStorageKey = "memephotoai_free_export_count";
+const creatorUpgradeShownStorageKey = "memephotoai_creator_upgrade_shown";
 
 type MemeGeneratorProps = {
   afterEditorContent?: ReactNode;
@@ -957,6 +963,7 @@ export function MemeGenerator({
   const [autoLayoutEnabled, setAutoLayoutEnabled] = useState(true);
   const [textAboveStickers, setTextAboveStickers] = useState(true);
   const [imageCacheVersion, setImageCacheVersion] = useState(0);
+  const [showCreatorUpgrade, setShowCreatorUpgrade] = useState(false);
   const canvasHeight =
     outputRatios.find((ratio) => ratio.id === outputRatio)?.height ?? canvasSize;
 
@@ -1152,7 +1159,10 @@ export function MemeGenerator({
       if (frameEnabled) {
         drawFrame(context, canvasHeight);
       }
-      if (!isCreator) {
+      if (
+        getExportPolicy(isCreator, canvasSize, canvasHeight)
+          .includePlatformWatermark
+      ) {
         drawSignatureWatermark(
           context,
           imageBounds,
@@ -1967,16 +1977,61 @@ export function MemeGenerator({
     setSelectedTextId(null);
   }
 
+  function rememberSuccessfulFreeExport() {
+    const currentCount = Number.parseInt(
+      window.localStorage.getItem(freeExportCountStorageKey) ?? "0",
+      10,
+    );
+    const nextCount = Number.isFinite(currentCount) ? currentCount + 1 : 1;
+    const hasShownCreatorUpgrade =
+      window.localStorage.getItem(creatorUpgradeShownStorageKey) === "true";
+
+    window.localStorage.setItem(freeExportCountStorageKey, String(nextCount));
+
+    if (shouldShowCreatorUpgrade(nextCount, hasShownCreatorUpgrade)) {
+      window.localStorage.setItem(creatorUpgradeShownStorageKey, "true");
+      setShowCreatorUpgrade(true);
+    }
+  }
+
   function handleDownload() {
     const canvas = canvasRef.current;
     if (!canvas) {
       return;
     }
 
+    const exportPolicy = getExportPolicy(isCreator, canvas.width, canvas.height);
+    const dimensions = exportPolicy.dimensions;
+    const requiresResize =
+      dimensions.width !== canvas.width || dimensions.height !== canvas.height;
+    let exportCanvas: HTMLCanvasElement = canvas;
+
+    if (requiresResize) {
+      const resizedCanvas = document.createElement("canvas");
+      resizedCanvas.width = dimensions.width;
+      resizedCanvas.height = dimensions.height;
+      const exportContext = resizedCanvas.getContext("2d");
+
+      if (!exportContext) {
+        return;
+      }
+
+      exportContext.drawImage(canvas, 0, 0, dimensions.width, dimensions.height);
+      exportCanvas = resizedCanvas;
+    }
+
     const link = document.createElement("a");
     link.download = "photo-meme.png";
-    link.href = canvas.toDataURL("image/png");
+    link.href = exportCanvas.toDataURL("image/png");
+    document.body.appendChild(link);
     link.click();
+    window.setTimeout(() => {
+      link.remove();
+    }, 0);
+
+    if (exportPolicy.tier === "free") {
+      rememberSuccessfulFreeExport();
+    }
   }
 
   return (
@@ -2658,6 +2713,41 @@ export function MemeGenerator({
           </div>
         </div>
       </div>
+      {showCreatorUpgrade ? (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="creator-upgrade-title"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/45 p-4"
+        >
+          <div className="w-full max-w-md rounded-[2rem] bg-white p-6 shadow-2xl">
+            <p className="w-fit rounded-full bg-[#ffde59] px-3 py-1 text-xs font-black uppercase tracking-[0.18em] text-zinc-950">
+              Optional upgrade
+            </p>
+            <h3 id="creator-upgrade-title" className="mt-4 text-2xl font-black text-zinc-950">
+              Upgrade to Creator
+            </h3>
+            <p className="mt-3 text-sm font-semibold leading-6 text-zinc-600">
+              Creator keeps your original canvas resolution and removes the MemePhoto AI platform watermark. Free downloads stay unlimited with a watermark and a maximum 1080px edge.
+            </p>
+            <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+              <a
+                href="/pricing"
+                className="rounded-full bg-zinc-950 px-5 py-3 text-center text-sm font-black text-white transition hover:-translate-y-0.5"
+              >
+                Upgrade to Creator
+              </a>
+              <button
+                type="button"
+                onClick={() => setShowCreatorUpgrade(false)}
+                className="rounded-full border border-zinc-300 bg-white px-5 py-3 text-sm font-black text-zinc-700 transition hover:border-zinc-950 hover:text-zinc-950"
+              >
+                Continue with Free
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }
