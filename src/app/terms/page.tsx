@@ -47,6 +47,11 @@ export default function TermsPage() {
           or sharing it. Do not submit sensitive images to the AI caption
           feature.
         </p>
+        <p>
+          AI caption requests may require automated human verification and an
+          image safety check before a photo is sent to an AI provider. A safety
+          check can decline an image without disclosing detailed classifications.
+        </p>
       </InfoCard>
       <InfoCard title="Acceptable Use and Prohibited Content">
         <p>
@@ -66,6 +71,10 @@ export default function TermsPage() {
           </li>
           <li>
             promotes violence, hate speech, harassment, or illegal activities;
+          </li>
+          <li>
+            depicts severe graphic violence, hate, extremism, or other unlawful
+            material;
           </li>
           <li>
             infringes copyrights, trademarks, privacy rights, or other

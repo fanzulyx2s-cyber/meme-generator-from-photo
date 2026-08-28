@@ -28,6 +28,7 @@ export const generateCaptionsRequestSchema = z
       .refine((value) => !/^data:image\//i.test(value)),
     mimeType: imageMimeTypeSchema,
     style: captionStyleSchema,
+    turnstileToken: z.string().trim().min(1).max(4096).optional(),
   })
   .strict();
 

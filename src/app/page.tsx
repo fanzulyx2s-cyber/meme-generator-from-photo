@@ -17,6 +17,7 @@ export const metadata = createPageMetadata({
 });
 
 const aiCaptionsEnabled = process.env.AI_CAPTIONS_ENABLED === "true";
+const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
 
 const steps = [
   {
@@ -350,6 +351,7 @@ export default function Home() {
         <div className="mx-auto grid max-w-7xl gap-14 px-4 py-8 sm:px-6 lg:px-8">
           <MemeGenerator
             aiCaptionsEnabled={aiCaptionsEnabled}
+            turnstileSiteKey={turnstileSiteKey}
             afterEditorContent={<CreatorLicensePanel variant="compact" />}
           />
 

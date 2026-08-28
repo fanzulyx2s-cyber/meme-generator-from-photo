@@ -22,6 +22,10 @@ const messageByCode: Record<ClientErrorCode, string> = {
   INVALID_PROVIDER_RESPONSE: "We couldn't generate valid captions. Please try again.",
   AI_GENERATION_FAILED: "We couldn't generate captions. Please try again.",
   UNSUPPORTED_PROVIDER: "AI captions are temporarily unavailable.",
+  TURNSTILE_REQUIRED: "Human verification is required before generating captions.",
+  TURNSTILE_FAILED: "Human verification could not be completed. Please try again.",
+  IMAGE_CONTENT_NOT_ALLOWED: "This image can’t be processed by AI. Please choose another image.",
+  IMAGE_MODERATION_UNAVAILABLE: "Image safety checks are temporarily unavailable. Please try again.",
   REQUEST_ABORTED: "Caption generation was cancelled.",
 };
 
@@ -51,6 +55,7 @@ export async function requestAiCaptions({
   imageBase64,
   mimeType,
   style,
+  turnstileToken,
   signal,
   fetcher = fetch,
   timeoutMs = aiCaptionClientTimeoutMs,
@@ -58,11 +63,12 @@ export async function requestAiCaptions({
   imageBase64: string;
   mimeType: ImageMimeType;
   style: CaptionStyle;
+  turnstileToken?: string;
   signal?: AbortSignal;
   fetcher?: Fetcher;
   timeoutMs?: number;
 }): Promise<MemeCaption[]> {
-  const request = generateCaptionsRequestSchema.safeParse({ imageBase64, mimeType, style });
+  const request = generateCaptionsRequestSchema.safeParse({ imageBase64, mimeType, style, ...(turnstileToken ? { turnstileToken } : {}) });
   if (!request.success) throw new AiCaptionClientError("INVALID_IMAGE");
 
   const controller = new AbortController();

@@ -79,6 +79,7 @@ const creatorUpgradeShownStorageKey = "memephotoai_creator_upgrade_shown";
 type MemeGeneratorProps = {
   afterEditorContent?: ReactNode;
   aiCaptionsEnabled?: boolean;
+  turnstileSiteKey?: string;
 };
 
 type CanvasBounds = {
@@ -894,6 +895,7 @@ function drawStickers(
 export function MemeGenerator({
   afterEditorContent,
   aiCaptionsEnabled = false,
+  turnstileSiteKey,
 }: MemeGeneratorProps) {
   const { isCreator } = useCreatorLicense();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -2099,6 +2101,7 @@ export function MemeGenerator({
             {aiCaptionsEnabled && originalFile ? (
               <AiCaptionPanel
                 file={originalFile}
+                turnstileSiteKey={turnstileSiteKey}
                 onUseCaption={(caption) => {
                   setTopText(caption.topText);
                   setBottomText(caption.bottomText);

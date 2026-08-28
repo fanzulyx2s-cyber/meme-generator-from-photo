@@ -9,6 +9,10 @@ import type { AiCaptionEnvironment } from "./config";
 import type { CreateCaptionProviderOptions } from "./create-caption-provider";
 import type { AiCaptionErrorCode, GenerateCaptionsResult } from "./types";
 import { getSafeUpstreamStatus } from "./diagnostics";
+import { createTurnstileVerifier } from "./turnstile";
+import { GoogleVisionModerationProvider } from "./image-moderation";
+import type { TurnstileVerifier } from "./turnstile";
+import type { ImageModerationProvider } from "./image-moderation";
 
 type ErrorResult = { ok: false; status: number; error: { code: AiCaptionErrorCode; message: string } };
 type SuccessResult = { ok: true; captions: GenerateCaptionsResult["captions"]; usageMetadata?: GenerateCaptionsResult["usageMetadata"]; fallbackUsed: boolean };
@@ -19,6 +23,7 @@ const statusByCode: Record<AiCaptionErrorCode, number> = {
   AI_DISABLED: 404, MISSING_CONFIGURATION: 503, INVALID_IMAGE: 400, INVALID_CONTENT_TYPE: 415, REQUEST_TOO_LARGE: 413, IMAGE_TOO_LARGE: 413, UNSUPPORTED_IMAGE_TYPE: 415,
   INVALID_STYLE: 400, CONTENT_NOT_ALLOWED: 422, PROVIDER_TIMEOUT: 504, PROVIDER_RATE_LIMITED: 429,
   INVALID_PROVIDER_RESPONSE: 502, AI_GENERATION_FAILED: 502, UNSUPPORTED_PROVIDER: 503,
+  TURNSTILE_REQUIRED: 403, TURNSTILE_FAILED: 403, IMAGE_CONTENT_NOT_ALLOWED: 422, IMAGE_MODERATION_UNAVAILABLE: 503,
 };
 
 function failure(code: AiCaptionErrorCode, message: string): ErrorResult {
@@ -78,7 +83,7 @@ function providerFailure(error: unknown): ErrorResult {
     : failure("AI_GENERATION_FAILED", "The AI caption service could not complete the request.");
 }
 
-export async function handleAiCaptionRequest({ requestBody, env, providerFactory = createCaptionProvider, diagnostics, requestSignal, retryDelayMs = 350 }: { requestBody: unknown; env?: AiCaptionEnvironment; providerFactory?: ProviderFactory; diagnostics?: AiCaptionDiagnostics; requestSignal?: AbortSignal; retryDelayMs?: number }): Promise<AiCaptionHandlerResult> {
+export async function handleAiCaptionRequest({ requestBody, env = process.env, providerFactory = createCaptionProvider, diagnostics, requestSignal, retryDelayMs = 350, turnstileVerifier, moderationProvider }: { requestBody: unknown; env?: AiCaptionEnvironment; providerFactory?: ProviderFactory; diagnostics?: AiCaptionDiagnostics; requestSignal?: AbortSignal; retryDelayMs?: number; turnstileVerifier?: TurnstileVerifier; moderationProvider?: ImageModerationProvider }): Promise<AiCaptionHandlerResult> {
   const config = readAiCaptionConfig(env);
   if (!config.enabled) {
     diagnostics?.emit("AI_CAPTION_ROUTE_ERROR", { stage: "CONFIG", localStatus: 404 });
@@ -89,10 +94,27 @@ export async function handleAiCaptionRequest({ requestBody, env, providerFactory
     diagnostics?.emit("AI_CAPTION_ROUTE_ERROR", { stage: "IMAGE_VALIDATION", localStatus: 400 });
     return inputFailure(requestBody);
   }
+  const production = env.NODE_ENV === "production";
+  const verifyTurnstile = turnstileVerifier ?? createTurnstileVerifier({ enabled: env.TURNSTILE_ENABLED === "true" || production, secret: env.TURNSTILE_SECRET_KEY, expectedHostname: env.TURNSTILE_EXPECTED_HOSTNAME });
+  const turnstile = await verifyTurnstile(parsed.data.turnstileToken);
+  if (!turnstile.ok) {
+    diagnostics?.emit("AI_CAPTION_ROUTE_ERROR", { stage: "CONFIG", localStatus: statusByCode[turnstile.code], errorType: turnstile.code });
+    return failure(turnstile.code, "Human verification could not be completed. Please try again.");
+  }
   const imageError = await decodeImage(parsed.data.imageBase64, parsed.data.mimeType);
   if (imageError) {
     diagnostics?.emit("AI_CAPTION_ROUTE_ERROR", { stage: "IMAGE_VALIDATION", localStatus: statusByCode[imageError.code] });
     return failure(imageError.code, imageError.message);
+  }
+  const moderationEnabled = env.IMAGE_MODERATION_ENABLED === "true" || production;
+  if (moderationEnabled) {
+    const moderator = moderationProvider ?? new GoogleVisionModerationProvider({ apiKey: env.GOOGLE_CLOUD_VISION_API_KEY });
+    const moderation = await moderator.moderate(Buffer.from(parsed.data.imageBase64, "base64"), parsed.data.mimeType);
+    if (moderation.decision !== "allow") {
+      const code = moderation.decision === "block" ? "IMAGE_CONTENT_NOT_ALLOWED" : "IMAGE_MODERATION_UNAVAILABLE";
+      diagnostics?.emit("AI_CAPTION_ROUTE_ERROR", { stage: "IMAGE_VALIDATION", localStatus: statusByCode[code], errorType: code });
+      return failure(code, moderation.decision === "block" ? "This image can't be processed by AI. Please choose another image." : "Image safety checks are temporarily unavailable. Please try again.");
+    }
   }
   const requestController = new AbortController();
   let requestTimedOut = false;

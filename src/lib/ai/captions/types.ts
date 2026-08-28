@@ -54,6 +54,10 @@ export const aiCaptionErrorCodes = [
   "INVALID_PROVIDER_RESPONSE",
   "AI_GENERATION_FAILED",
   "UNSUPPORTED_PROVIDER",
+  "TURNSTILE_REQUIRED",
+  "TURNSTILE_FAILED",
+  "IMAGE_CONTENT_NOT_ALLOWED",
+  "IMAGE_MODERATION_UNAVAILABLE",
 ] as const;
 
 export type AiCaptionErrorCode = (typeof aiCaptionErrorCodes)[number];
