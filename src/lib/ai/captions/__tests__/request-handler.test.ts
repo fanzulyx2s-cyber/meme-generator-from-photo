@@ -7,6 +7,8 @@ const createTestImageBase64 = (): string => "iVBORw0KGgoAAAANSUhEUgAAAAQAAAADCAI
 const successBody = { imageBase64: createTestImageBase64(), mimeType: "image/png", style: "funny" };
 const successProvider = { name: "mock" as const, generateCaptions: async () => ({ captions: Array.from({ length: 5 }, () => ({ topText: "TOP", bottomText: "BOTTOM" })) }) };
 const enabledMockEnv = { AI_CAPTIONS_ENABLED: "true", AI_CAPTION_PROVIDER: "mock" };
+const verifiedTurnstile = async () => ({ ok: true as const });
+const allowedModeration = { moderate: vi.fn(async () => ({ decision: "allow" as const })) };
 
 describe("handleAiCaptionRequest", () => {
   it("hides disabled captions", async () => {
@@ -31,6 +33,78 @@ describe("handleAiCaptionRequest", () => {
     const result = await handleAiCaptionRequest({ requestBody: successBody, env: enabledMockEnv, providerFactory: () => successProvider });
     expect(result).toMatchObject({ ok: true });
     if (result.ok) expect(result.captions).toHaveLength(5);
+  });
+
+  it("does not call moderation or a caption provider when Turnstile rejects", async () => {
+    const moderationProvider = { moderate: vi.fn(async () => ({ decision: "allow" as const })) };
+    const providerFactory = vi.fn(() => successProvider);
+    const result = await handleAiCaptionRequest({
+      requestBody: successBody,
+      env: { ...enabledMockEnv, TURNSTILE_ENABLED: "true", IMAGE_MODERATION_ENABLED: "true" },
+      turnstileVerifier: async () => ({ ok: false as const, code: "TURNSTILE_FAILED" }),
+      moderationProvider,
+      providerFactory,
+    });
+
+    expect(result).toMatchObject({ ok: false, status: 403, error: { code: "TURNSTILE_FAILED" } });
+    expect(moderationProvider.moderate).not.toHaveBeenCalled();
+    expect(providerFactory).not.toHaveBeenCalled();
+  });
+
+  it.each(["block", "unavailable"] as const)("does not call a caption provider when moderation is %s", async (decision) => {
+    const moderationProvider = { moderate: vi.fn(async () => ({ decision })) };
+    const providerFactory = vi.fn(() => successProvider);
+    const result = await handleAiCaptionRequest({
+      requestBody: successBody,
+      env: { ...enabledMockEnv, TURNSTILE_ENABLED: "true", IMAGE_MODERATION_ENABLED: "true" },
+      turnstileVerifier: verifiedTurnstile,
+      moderationProvider,
+      providerFactory,
+    });
+
+    expect(result).toMatchObject({ ok: false, status: decision === "block" ? 422 : 503 });
+    expect(moderationProvider.moderate).toHaveBeenCalledTimes(1);
+    expect(providerFactory).not.toHaveBeenCalled();
+  });
+
+  it("does not permit test dependency injection to bypass production guardrails", async () => {
+    const moderationProvider = { moderate: vi.fn(async () => ({ decision: "allow" as const })) };
+    const providerFactory = vi.fn(() => successProvider);
+    const result = await handleAiCaptionRequest({
+      requestBody: successBody,
+      env: { ...enabledMockEnv, NODE_ENV: "production", TURNSTILE_SECRET_KEY: "synthetic", IMAGE_MODERATION_ENABLED: "false" },
+      turnstileVerifier: verifiedTurnstile,
+      moderationProvider,
+      providerFactory,
+    });
+
+    expect(result).toMatchObject({ ok: false, status: 403 });
+    expect(moderationProvider.moderate).not.toHaveBeenCalled();
+    expect(providerFactory).not.toHaveBeenCalled();
+  });
+
+  it("keeps the Gemini primary, fallback, then Mistral order after approved guardrails", async () => {
+    const calls: string[] = [];
+    const result = await handleAiCaptionRequest({
+      requestBody: successBody,
+      env: { AI_CAPTIONS_ENABLED: "true", TURNSTILE_ENABLED: "true", IMAGE_MODERATION_ENABLED: "true", GEMINI_API_KEY: "synthetic-gemini-key", MISTRAL_API_KEY: "synthetic-mistral-key" },
+      retryDelayMs: 0,
+      turnstileVerifier: verifiedTurnstile,
+      moderationProvider: allowedModeration,
+      providerFactory: (options) => {
+        calls.push(`${options.providerName}:${options.model}`);
+        if (options.providerName === "mistral") return successProvider;
+        return { ...successProvider, generateCaptions: async () => { throw new CaptionProviderError({ code: "AI_GENERATION_FAILED", message: "safe", retryable: true, fallbackEligible: true, cause: { status: 503 } }); } };
+      },
+    });
+
+    expect(result).toMatchObject({ ok: true, fallbackUsed: true });
+    expect(calls).toEqual([
+      "gemini:gemini-3.5-flash-lite",
+      "gemini:gemini-3.5-flash-lite",
+      "gemini:gemini-3.1-flash-lite",
+      "mistral:ministral-8b-2512",
+    ]);
   });
 
   it("uses gemini-3.5-flash-lite as the default production model", async () => {

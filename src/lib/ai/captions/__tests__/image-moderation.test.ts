@@ -20,4 +20,15 @@ describe("GoogleVisionModerationProvider", () => {
     await expect(unknown.moderate(Buffer.from([1]), "image/png")).resolves.toMatchObject({ decision: "block" });
     await expect(new GoogleVisionModerationProvider({ apiKey: "test", fetch: vi.fn().mockRejectedValue(new Error("offline")) }).moderate(Buffer.from([1]), "image/png")).resolves.toMatchObject({ decision: "unavailable" });
   });
+
+  it("fails closed and clears its timer when moderation times out", async () => {
+    vi.useFakeTimers();
+    const provider = new GoogleVisionModerationProvider({ apiKey: "test", timeoutMs: 5, fetch: vi.fn().mockImplementation((_url, init) => new Promise((_, reject) => init?.signal?.addEventListener("abort", () => reject(new Error("aborted")), { once: true }))) });
+    const result = provider.moderate(Buffer.from([1]), "image/png");
+
+    await vi.advanceTimersByTimeAsync(5);
+    await expect(result).resolves.toEqual({ decision: "unavailable" });
+    expect(vi.getTimerCount()).toBe(0);
+    vi.useRealTimers();
+  });
 });

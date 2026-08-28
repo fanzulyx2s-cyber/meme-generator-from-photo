@@ -95,7 +95,9 @@ export async function handleAiCaptionRequest({ requestBody, env = process.env, p
     return inputFailure(requestBody);
   }
   const production = env.NODE_ENV === "production";
-  const verifyTurnstile = turnstileVerifier ?? createTurnstileVerifier({ enabled: env.TURNSTILE_ENABLED === "true" || production, secret: env.TURNSTILE_SECRET_KEY, expectedHostname: env.TURNSTILE_EXPECTED_HOSTNAME });
+  const verifyTurnstile = !production && turnstileVerifier
+    ? turnstileVerifier
+    : createTurnstileVerifier({ enabled: env.TURNSTILE_ENABLED === "true" || production, secret: env.TURNSTILE_SECRET_KEY, expectedHostname: env.TURNSTILE_EXPECTED_HOSTNAME });
   const turnstile = await verifyTurnstile(parsed.data.turnstileToken);
   if (!turnstile.ok) {
     diagnostics?.emit("AI_CAPTION_ROUTE_ERROR", { stage: "CONFIG", localStatus: statusByCode[turnstile.code], errorType: turnstile.code });
@@ -108,7 +110,9 @@ export async function handleAiCaptionRequest({ requestBody, env = process.env, p
   }
   const moderationEnabled = env.IMAGE_MODERATION_ENABLED === "true" || production;
   if (moderationEnabled) {
-    const moderator = moderationProvider ?? new GoogleVisionModerationProvider({ apiKey: env.GOOGLE_CLOUD_VISION_API_KEY });
+    const moderator = !production && moderationProvider
+      ? moderationProvider
+      : new GoogleVisionModerationProvider({ apiKey: env.GOOGLE_CLOUD_VISION_API_KEY });
     const moderation = await moderator.moderate(Buffer.from(parsed.data.imageBase64, "base64"), parsed.data.mimeType);
     if (moderation.decision !== "allow") {
       const code = moderation.decision === "block" ? "IMAGE_CONTENT_NOT_ALLOWED" : "IMAGE_MODERATION_UNAVAILABLE";

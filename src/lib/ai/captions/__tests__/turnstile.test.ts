@@ -21,4 +21,19 @@ describe("Turnstile verifier", () => {
     await expect(mismatch("token")).resolves.toMatchObject({ ok: false });
     await expect(createTurnstileVerifier({ enabled: true, secret: "test", fetch: vi.fn().mockRejectedValue(new Error("offline")) })("token")).resolves.toMatchObject({ ok: false });
   });
+
+  it("fails closed when hostname validation is not configured", async () => {
+    const fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify({ success: true, hostname: "example.test", action: "ai_caption" }), { status: 200 }));
+
+    await expect(createTurnstileVerifier({ enabled: true, secret: "test", fetch })("token")).resolves.toMatchObject({ ok: false });
+  });
+
+  it("clears its timeout after a verifier failure", async () => {
+    vi.useFakeTimers();
+    const verify = createTurnstileVerifier({ enabled: true, secret: "test", expectedHostname: "example.test", fetch: vi.fn().mockRejectedValue(new Error("offline")) });
+
+    await expect(verify("token")).resolves.toMatchObject({ ok: false });
+    expect(vi.getTimerCount()).toBe(0);
+    vi.useRealTimers();
+  });
 });
