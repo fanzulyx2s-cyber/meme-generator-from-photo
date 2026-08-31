@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { CaptionProviderError } from "../caption-provider";
-import { handleAiCaptionRequest } from "../request-handler";
+import { handleAiCaptionRequest, isImageModerationEnabled } from "../request-handler";
 
 const createTestImageBase64 = (): string => "iVBORw0KGgoAAAANSUhEUgAAAAQAAAADCAIAAAA7ljmRAAAACXBIWXMAAAPoAAAD6AG1e1JrAAAADklEQVR4nGP4jwQYcHIAu4cj3ZP55DwAAAAASUVORK5CYII=";
 const successBody = { imageBase64: createTestImageBase64(), mimeType: "image/png", style: "funny" };
@@ -35,12 +35,52 @@ describe("handleAiCaptionRequest", () => {
     if (result.ok) expect(result.captions).toHaveLength(5);
   });
 
-  it("does not call moderation or a caption provider when Turnstile rejects", async () => {
+  it.each([undefined, "false"])("does not enable image moderation by default in production when IMAGE_MODERATION_ENABLED is %s", (value) => {
+    expect(isImageModerationEnabled({ NODE_ENV: "production", IMAGE_MODERATION_ENABLED: value })).toBe(false);
+  });
+
+  it("enables image moderation only when IMAGE_MODERATION_ENABLED is explicitly true", () => {
+    expect(isImageModerationEnabled({ NODE_ENV: "production", IMAGE_MODERATION_ENABLED: "true" })).toBe(true);
+  });
+
+  it("skips image moderation when it is disabled and continues to the caption provider", async () => {
+    const moderationProvider = { moderate: vi.fn(async () => ({ decision: "allow" as const })) };
+    const providerFactory = vi.fn(() => successProvider);
+    const result = await handleAiCaptionRequest({
+      requestBody: successBody,
+      env: { ...enabledMockEnv, TURNSTILE_ENABLED: "true", IMAGE_MODERATION_ENABLED: "false" },
+      turnstileVerifier: verifiedTurnstile,
+      moderationProvider,
+      providerFactory,
+    });
+
+    expect(result).toMatchObject({ ok: true });
+    expect(moderationProvider.moderate).not.toHaveBeenCalled();
+    expect(providerFactory).toHaveBeenCalledTimes(1);
+  });
+
+  it("fails closed before moderation or caption generation when explicitly enabled without a Vision key", async () => {
     const moderationProvider = { moderate: vi.fn(async () => ({ decision: "allow" as const })) };
     const providerFactory = vi.fn(() => successProvider);
     const result = await handleAiCaptionRequest({
       requestBody: successBody,
       env: { ...enabledMockEnv, TURNSTILE_ENABLED: "true", IMAGE_MODERATION_ENABLED: "true" },
+      turnstileVerifier: verifiedTurnstile,
+      moderationProvider,
+      providerFactory,
+    });
+
+    expect(result).toMatchObject({ ok: false, status: 503, error: { code: "MISSING_CONFIGURATION" } });
+    expect(moderationProvider.moderate).not.toHaveBeenCalled();
+    expect(providerFactory).not.toHaveBeenCalled();
+  });
+
+  it("does not call moderation or a caption provider when Turnstile rejects", async () => {
+    const moderationProvider = { moderate: vi.fn(async () => ({ decision: "allow" as const })) };
+    const providerFactory = vi.fn(() => successProvider);
+    const result = await handleAiCaptionRequest({
+      requestBody: successBody,
+      env: { ...enabledMockEnv, TURNSTILE_ENABLED: "true", IMAGE_MODERATION_ENABLED: "true", GOOGLE_CLOUD_VISION_API_KEY: "synthetic-vision-key" },
       turnstileVerifier: async () => ({ ok: false as const, code: "TURNSTILE_FAILED" }),
       moderationProvider,
       providerFactory,
@@ -56,7 +96,7 @@ describe("handleAiCaptionRequest", () => {
     const providerFactory = vi.fn(() => successProvider);
     const result = await handleAiCaptionRequest({
       requestBody: successBody,
-      env: { ...enabledMockEnv, TURNSTILE_ENABLED: "true", IMAGE_MODERATION_ENABLED: "true" },
+      env: { ...enabledMockEnv, TURNSTILE_ENABLED: "true", IMAGE_MODERATION_ENABLED: "true", GOOGLE_CLOUD_VISION_API_KEY: "synthetic-vision-key" },
       turnstileVerifier: verifiedTurnstile,
       moderationProvider,
       providerFactory,
@@ -83,11 +123,26 @@ describe("handleAiCaptionRequest", () => {
     expect(providerFactory).not.toHaveBeenCalled();
   });
 
+  it("does not permit test moderation injection to bypass missing Vision configuration in production", async () => {
+    const moderationProvider = { moderate: vi.fn(async () => ({ decision: "allow" as const })) };
+    const providerFactory = vi.fn(() => successProvider);
+    const result = await handleAiCaptionRequest({
+      requestBody: successBody,
+      env: { ...enabledMockEnv, NODE_ENV: "production", IMAGE_MODERATION_ENABLED: "true" },
+      moderationProvider,
+      providerFactory,
+    });
+
+    expect(result).toMatchObject({ ok: false, status: 503, error: { code: "MISSING_CONFIGURATION" } });
+    expect(moderationProvider.moderate).not.toHaveBeenCalled();
+    expect(providerFactory).not.toHaveBeenCalled();
+  });
+
   it("keeps the Gemini primary, fallback, then Mistral order after approved guardrails", async () => {
     const calls: string[] = [];
     const result = await handleAiCaptionRequest({
       requestBody: successBody,
-      env: { AI_CAPTIONS_ENABLED: "true", TURNSTILE_ENABLED: "true", IMAGE_MODERATION_ENABLED: "true", GEMINI_API_KEY: "synthetic-gemini-key", MISTRAL_API_KEY: "synthetic-mistral-key" },
+      env: { AI_CAPTIONS_ENABLED: "true", TURNSTILE_ENABLED: "true", IMAGE_MODERATION_ENABLED: "true", GOOGLE_CLOUD_VISION_API_KEY: "synthetic-vision-key", GEMINI_API_KEY: "synthetic-gemini-key", MISTRAL_API_KEY: "synthetic-mistral-key" },
       retryDelayMs: 0,
       turnstileVerifier: verifiedTurnstile,
       moderationProvider: allowedModeration,

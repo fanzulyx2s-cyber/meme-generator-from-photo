@@ -207,16 +207,16 @@ export default function PrivacyPage() {
       <InfoCard title="Optional AI caption safety checks">
         <p>
           When you choose the optional AI caption feature, MemePhoto AI may use
-          Cloudflare Turnstile to help prevent automated abuse and Google image
-          safety checks to screen the image before it is sent for caption
-          analysis. Manual editing and PNG export remain browser-local and do
-          not use these checks.
+          Cloudflare Turnstile to help prevent automated abuse. When image
+          moderation is enabled, MemePhoto AI may use Google Vision to screen
+          the image before it is sent for caption analysis. Manual editing and
+          PNG export remain browser-local and do not use these checks.
         </p>
         <p>
-          After the safety checks pass, AI Caption mode may use Google Gemini.
-          If the primary service is unavailable under the configured fallback
-          conditions, it may use Mistral. Third-party providers handle data
-          according to their own policies.
+          AI Caption mode may use Google Gemini after any enabled safety checks
+          pass. If the primary service is unavailable under the configured
+          fallback conditions, it may use Mistral. Third-party providers handle
+          data according to their own policies.
         </p>
       </InfoCard>
 

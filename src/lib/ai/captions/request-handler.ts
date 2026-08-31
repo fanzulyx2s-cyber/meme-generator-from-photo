@@ -58,6 +58,10 @@ function inputFailure(body: unknown): ErrorResult {
   return failure("INVALID_IMAGE", "The image request is invalid.");
 }
 
+export function isImageModerationEnabled(env: AiCaptionEnvironment): boolean {
+  return env.IMAGE_MODERATION_ENABLED === "true";
+}
+
 function shouldRetryPrimary(error: unknown): error is CaptionProviderError {
   if (!(error instanceof CaptionProviderError) || !error.retryable || error.code !== "AI_GENERATION_FAILED") return false;
   const status = getSafeUpstreamStatus(error.cause);
@@ -95,6 +99,11 @@ export async function handleAiCaptionRequest({ requestBody, env = process.env, p
     return inputFailure(requestBody);
   }
   const production = env.NODE_ENV === "production";
+  const moderationEnabled = isImageModerationEnabled(env);
+  if (moderationEnabled && !env.GOOGLE_CLOUD_VISION_API_KEY?.trim()) {
+    diagnostics?.emit("AI_CAPTION_ROUTE_ERROR", { stage: "CONFIG", localStatus: 503, errorType: "MISSING_CONFIGURATION" });
+    return failure("MISSING_CONFIGURATION", "Image safety checks are not configured.");
+  }
   const verifyTurnstile = !production && turnstileVerifier
     ? turnstileVerifier
     : createTurnstileVerifier({ enabled: env.TURNSTILE_ENABLED === "true" || production, secret: env.TURNSTILE_SECRET_KEY, expectedHostname: env.TURNSTILE_EXPECTED_HOSTNAME });
@@ -108,7 +117,6 @@ export async function handleAiCaptionRequest({ requestBody, env = process.env, p
     diagnostics?.emit("AI_CAPTION_ROUTE_ERROR", { stage: "IMAGE_VALIDATION", localStatus: statusByCode[imageError.code] });
     return failure(imageError.code, imageError.message);
   }
-  const moderationEnabled = env.IMAGE_MODERATION_ENABLED === "true" || production;
   if (moderationEnabled) {
     const moderator = !production && moderationProvider
       ? moderationProvider

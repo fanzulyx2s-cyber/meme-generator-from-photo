@@ -48,9 +48,10 @@ export default function TermsPage() {
           feature.
         </p>
         <p>
-          AI caption requests may require automated human verification and an
-          image safety check before a photo is sent to an AI provider. A safety
-          check can decline an image without disclosing detailed classifications.
+          AI caption requests may require automated human verification and may
+          use enabled image safety checks before a photo is sent to an AI
+          provider. A safety check can decline an image without disclosing
+          detailed classifications.
         </p>
       </InfoCard>
       <InfoCard title="Acceptable Use and Prohibited Content">
