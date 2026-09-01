@@ -2,7 +2,7 @@ export type TurnstileVerification = { ok: true } | { ok: false; code: "TURNSTILE
 
 export type TurnstileVerifier = (token: string | undefined) => Promise<TurnstileVerification>;
 
-export function createTurnstileVerifier({ enabled, secret, expectedHostname, fetch = globalThis.fetch }: { enabled: boolean; secret?: string; expectedHostname?: string; fetch?: typeof globalThis.fetch }): TurnstileVerifier {
+export function createTurnstileVerifier({ enabled, secret, expectedHostname, allowTestResponse = false, fetch = globalThis.fetch }: { enabled: boolean; secret?: string; expectedHostname?: string; allowTestResponse?: boolean; fetch?: typeof globalThis.fetch }): TurnstileVerifier {
   const used = new Set<string>();
   return async (token) => {
     if (!enabled) return { ok: true };
@@ -15,7 +15,9 @@ export function createTurnstileVerifier({ enabled, secret, expectedHostname, fet
       const response = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ secret, response: token }), signal: controller.signal });
       const body: unknown = await response.json();
       const record = typeof body === "object" && body !== null ? body as Record<string, unknown> : {};
-      return response.ok && record.success === true && record.hostname === expectedHostname && record.action === "ai_caption" ? { ok: true } : { ok: false, code: "TURNSTILE_FAILED" };
+      const matchesConfiguredResponse = record.hostname === expectedHostname && record.action === "ai_caption";
+      const matchesOfficialPreviewDummy = allowTestResponse && expectedHostname === "localhost" && record.hostname === "localhost" && record.action === "test";
+      return response.ok && record.success === true && (matchesConfiguredResponse || matchesOfficialPreviewDummy) ? { ok: true } : { ok: false, code: "TURNSTILE_FAILED" };
     } catch {
       return { ok: false, code: "TURNSTILE_FAILED" };
     } finally {

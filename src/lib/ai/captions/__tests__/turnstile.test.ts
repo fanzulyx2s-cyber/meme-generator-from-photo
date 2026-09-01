@@ -16,6 +16,16 @@ describe("Turnstile verifier", () => {
     expect(fetch).toHaveBeenCalledTimes(1);
   });
 
+  it("accepts Cloudflare's official dummy response only when explicitly enabled for Preview testing", async () => {
+    const response = new Response(JSON.stringify({ success: true, hostname: "localhost", action: "test" }), { status: 200 });
+    const preview = createTurnstileVerifier({ enabled: true, secret: "test", expectedHostname: "localhost", allowTestResponse: true, fetch: vi.fn().mockResolvedValue(response) });
+
+    await expect(preview("XXXX.DUMMY.TOKEN.XXXX")).resolves.toEqual({ ok: true });
+
+    const strict = createTurnstileVerifier({ enabled: true, secret: "test", expectedHostname: "localhost", fetch: vi.fn().mockResolvedValue(response) });
+    await expect(strict("XXXX.DUMMY.TOKEN.XXXX")).resolves.toMatchObject({ ok: false });
+  });
+
   it("fails closed for a mismatch or verifier error", async () => {
     const mismatch = createTurnstileVerifier({ enabled: true, secret: "test", fetch: vi.fn().mockResolvedValue(new Response(JSON.stringify({ success: true, hostname: "wrong", action: "wrong" }), { status: 200 })) });
     await expect(mismatch("token")).resolves.toMatchObject({ ok: false });

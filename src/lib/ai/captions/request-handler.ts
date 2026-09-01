@@ -106,7 +106,12 @@ export async function handleAiCaptionRequest({ requestBody, env = process.env, p
   }
   const verifyTurnstile = !production && turnstileVerifier
     ? turnstileVerifier
-    : createTurnstileVerifier({ enabled: env.TURNSTILE_ENABLED === "true" || production, secret: env.TURNSTILE_SECRET_KEY, expectedHostname: env.TURNSTILE_EXPECTED_HOSTNAME });
+    : createTurnstileVerifier({
+      enabled: env.TURNSTILE_ENABLED === "true" || production,
+      secret: env.TURNSTILE_SECRET_KEY,
+      expectedHostname: env.TURNSTILE_EXPECTED_HOSTNAME,
+      allowTestResponse: env.VERCEL_ENV === "preview" && env.TURNSTILE_EXPECTED_HOSTNAME === "localhost",
+    });
   const turnstile = await verifyTurnstile(parsed.data.turnstileToken);
   if (!turnstile.ok) {
     diagnostics?.emit("AI_CAPTION_ROUTE_ERROR", { stage: "CONFIG", localStatus: statusByCode[turnstile.code], errorType: turnstile.code });
