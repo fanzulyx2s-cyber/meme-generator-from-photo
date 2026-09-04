@@ -9,24 +9,132 @@ import type { CaptionStyle, MemeCaption } from "../lib/ai/captions/types";
 
 type PanelState = "intro" | "consent" | "options" | "preparing" | "generating" | "results" | "error";
 
-type TurnstileApi = { render: (container: HTMLElement, options: { sitekey: string; action: string; callback: (token: string) => void; "error-callback": () => void; "expired-callback": () => void }) => string };
+type TurnstileOptions = {
+  sitekey: string;
+  action: string;
+  callback: (token: string) => void;
+  "error-callback": () => void;
+  "expired-callback": () => void;
+};
+
+type TurnstileApi = {
+  render: (container: HTMLElement, options: TurnstileOptions) => string;
+  remove: (widgetId: string) => void;
+};
 
 declare global { interface Window { turnstile?: TurnstileApi; } }
 
+const TURNSTILE_SCRIPT_SRC = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
+const TURNSTILE_SCRIPT_SELECTOR = 'script[src^="https://challenges.cloudflare.com/turnstile/"]';
+
+function ensureTurnstileScript() {
+  const existing = document.querySelector<HTMLScriptElement>(TURNSTILE_SCRIPT_SELECTOR);
+  if (existing) return existing;
+
+  const script = document.createElement("script");
+  script.src = TURNSTILE_SCRIPT_SRC;
+  script.async = true;
+  script.defer = true;
+  document.head.appendChild(script);
+  return script;
+}
+
 function TurnstileWidget({ siteKey, onToken, onFailure }: { siteKey: string; onToken: (token: string) => void; onFailure: () => void }) {
   const target = useRef<HTMLDivElement | null>(null);
+  const widgetId = useRef<string | null>(null);
+  const onTokenRef = useRef(onToken);
+  const onFailureRef = useRef(onFailure);
+  const [attempt, setAttempt] = useState(0);
+  const [phase, setPhase] = useState<"loading" | "slow" | "ready" | "failed">("loading");
+
+  useEffect(() => {
+    onTokenRef.current = onToken;
+  }, [onToken]);
+
+  useEffect(() => {
+    onFailureRef.current = onFailure;
+  }, [onFailure]);
+
   useEffect(() => {
     let active = true;
-    const render = () => {
-      if (!active || !target.current || !window.turnstile) return;
-      window.turnstile.render(target.current, { sitekey: siteKey, action: "ai_caption", callback: (token) => active && onToken(token), "error-callback": () => active && onFailure(), "expired-callback": () => active && onFailure() });
+    const slowTimer = window.setTimeout(() => {
+      if (active) setPhase("slow");
+    }, 8_000);
+
+    const fail = () => {
+      if (!active) return;
+      window.clearTimeout(slowTimer);
+      setPhase("failed");
+      onFailureRef.current();
     };
-    const existing = document.querySelector<HTMLScriptElement>('script[src^="https://challenges.cloudflare.com/turnstile/"]');
-    if (existing) { existing.addEventListener("load", render, { once: true }); render(); }
-    else { const script = document.createElement("script"); script.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"; script.async = true; script.defer = true; script.addEventListener("load", render, { once: true }); document.head.appendChild(script); }
-    return () => { active = false; };
-  }, [siteKey, onToken, onFailure]);
-  return <div className="mt-4" aria-label="Human verification" ref={target} />;
+
+    const render = () => {
+      if (!active || widgetId.current || !target.current || !window.turnstile) return;
+      widgetId.current = window.turnstile.render(target.current, {
+        sitekey: siteKey,
+        action: "ai_caption",
+        callback: (token) => {
+          if (!active) return;
+          window.clearTimeout(slowTimer);
+          setPhase("ready");
+          onTokenRef.current(token);
+        },
+        "error-callback": fail,
+        "expired-callback": fail,
+      });
+    };
+
+    const script = ensureTurnstileScript();
+    const scriptFailure = () => {
+      script.remove();
+      fail();
+    };
+    script.addEventListener("load", render, { once: true });
+    script.addEventListener("error", scriptFailure, { once: true });
+    render();
+
+    return () => {
+      active = false;
+      window.clearTimeout(slowTimer);
+      script.removeEventListener("load", render);
+      script.removeEventListener("error", scriptFailure);
+      if (widgetId.current) {
+        window.turnstile?.remove(widgetId.current);
+        widgetId.current = null;
+      }
+    };
+  }, [siteKey, attempt]);
+
+  const retry = () => {
+    onFailureRef.current();
+    setPhase("loading");
+    setAttempt((current) => current + 1);
+  };
+
+  return (
+    <div className="mt-4">
+      <div aria-label="Human verification" ref={target} />
+      <div className="mt-2 text-sm text-zinc-600" role="status" aria-live="polite">
+        {phase === "loading" && <p>Checking that you&apos;re human...</p>}
+        {phase === "slow" && (
+          <p>Verification is taking longer than usual. Check your connection or disable blocking extensions.</p>
+        )}
+        {phase === "ready" && <p>Human verification complete.</p>}
+        {phase === "failed" && (
+          <div className="flex flex-wrap items-center gap-2">
+            <p>Human verification failed or expired.</p>
+            <button
+              type="button"
+              onClick={retry}
+              className="rounded-full border border-zinc-300 bg-white px-3 py-1.5 text-sm font-black text-zinc-700"
+            >
+              Retry verification
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }
 
 const styleLabels: Record<CaptionStyle, string> = {
@@ -60,6 +168,10 @@ export function AiCaptionPanel({ file, onUseCaption, onReset, turnstileSiteKey }
   const abortRef = useRef<AbortController | null>(null);
   const workingRef = useRef(false);
 
+  useEffect(() => {
+    if (turnstileSiteKey) ensureTurnstileScript();
+  }, [turnstileSiteKey]);
+
   const reset = useCallback(() => {
     abortRef.current?.abort();
     abortRef.current = null;
@@ -67,6 +179,7 @@ export function AiCaptionPanel({ file, onUseCaption, onReset, turnstileSiteKey }
     setState("intro");
     setCaptions([]);
     setError(null);
+    setTurnstileToken(undefined);
     onReset?.();
   }, [onReset]);
 

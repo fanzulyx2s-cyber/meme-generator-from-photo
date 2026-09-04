@@ -21,8 +21,42 @@ vi.mock("../../lib/ai/captions/client", async () => ({
 const createImageFile = (): File =>
   new File([new Uint8Array([1, 2, 3])], "synthetic-image.jpg", { type: "image/jpeg" });
 
+type TurnstileCallbacks = {
+  callback: (token: string) => void;
+  "error-callback": () => void;
+  "expired-callback": () => void;
+};
+
+function installTurnstileMock() {
+  let callbacks: TurnstileCallbacks | undefined;
+  let widgetCount = 0;
+  const api = {
+    render: vi.fn((_target: HTMLElement, options: TurnstileCallbacks) => {
+      callbacks = options;
+      widgetCount += 1;
+      return `widget-${widgetCount}`;
+    }),
+    remove: vi.fn(),
+  };
+  window.turnstile = api;
+  return {
+    api,
+    callbacks: () => {
+      if (!callbacks) throw new Error("Turnstile was not rendered");
+      return callbacks;
+    },
+  };
+}
+
 describe("AiCaptionPanel", () => {
-  afterEach(cleanup);
+  afterEach(() => {
+    cleanup();
+    delete window.turnstile;
+    document
+      .querySelectorAll('script[src^="https://challenges.cloudflare.com/turnstile/"]')
+      .forEach((script) => script.remove());
+    vi.useRealTimers();
+  });
 
   beforeEach(() => {
     vi.resetAllMocks();
@@ -105,5 +139,116 @@ describe("AiCaptionPanel", () => {
     resolvePreparation?.({ imageBase64: "runtime-value", mimeType: "image/jpeg", byteSize: 12, width: 8, height: 8 });
     expect(await screen.findAllByRole("button", { name: "Use This Caption" })).toHaveLength(5);
     expect(requestAiCaptions).toHaveBeenCalledTimes(1);
+  });
+
+  it("preloads Turnstile and keeps one widget across style changes", () => {
+    const { api } = installTurnstileMock();
+    const view = render(
+      <AiCaptionPanel
+        file={createImageFile()}
+        onUseCaption={vi.fn()}
+        turnstileSiteKey="test-site-key"
+      />,
+    );
+
+    expect(
+      document.querySelector('script[src^="https://challenges.cloudflare.com/turnstile/"]'),
+    ).toBeInTheDocument();
+    expect(api.render).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: "Generate AI Captions" }));
+    fireEvent.click(screen.getByRole("button", { name: "Continue With AI" }));
+    expect(api.render).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByRole("button", { name: "Workplace" }));
+    expect(api.render).toHaveBeenCalledTimes(1);
+
+    view.unmount();
+    expect(api.remove).toHaveBeenCalledWith("widget-1");
+  });
+
+  it("shows a slow hint and retries verification without requesting captions", () => {
+    vi.useFakeTimers();
+    const { api, callbacks } = installTurnstileMock();
+    render(
+      <AiCaptionPanel
+        file={createImageFile()}
+        onUseCaption={vi.fn()}
+        turnstileSiteKey="test-site-key"
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Generate AI Captions" }));
+    fireEvent.click(screen.getByRole("button", { name: "Continue With AI" }));
+    act(() => vi.advanceTimersByTime(8_000));
+
+    expect(screen.getByText(/taking longer than usual/i)).toBeInTheDocument();
+    expect(requestAiCaptions).not.toHaveBeenCalled();
+
+    act(() => callbacks()["error-callback"]());
+    fireEvent.click(screen.getByRole("button", { name: "Retry verification" }));
+
+    expect(api.remove).toHaveBeenCalledWith("widget-1");
+    expect(api.render).toHaveBeenCalledTimes(2);
+    expect(requestAiCaptions).not.toHaveBeenCalled();
+  });
+
+  it("enables generation only after success and keeps the token in memory", async () => {
+    const { callbacks } = installTurnstileMock();
+    compressImageForAi.mockResolvedValue({
+      imageBase64: "runtime-value",
+      mimeType: "image/jpeg",
+      byteSize: 12,
+      width: 8,
+      height: 8,
+    });
+    requestAiCaptions.mockResolvedValue(
+      Array.from({ length: 5 }, () => ({ topText: "TOP", bottomText: "BOTTOM" })),
+    );
+    render(
+      <AiCaptionPanel
+        file={createImageFile()}
+        onUseCaption={vi.fn()}
+        turnstileSiteKey="test-site-key"
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Generate AI Captions" }));
+    fireEvent.click(screen.getByRole("button", { name: "Continue With AI" }));
+    const generateButton = screen.getByRole("button", { name: "Generate 5 Captions" });
+    expect(generateButton).toBeDisabled();
+
+    act(() => callbacks().callback("synthetic-turnstile-token"));
+    expect(generateButton).toBeEnabled();
+    fireEvent.click(generateButton);
+
+    await waitFor(() =>
+      expect(requestAiCaptions).toHaveBeenCalledWith(
+        expect.objectContaining({ turnstileToken: "synthetic-turnstile-token" }),
+      ),
+    );
+  });
+
+  it("disables generation when verification expires", () => {
+    const { callbacks } = installTurnstileMock();
+    render(
+      <AiCaptionPanel
+        file={createImageFile()}
+        onUseCaption={vi.fn()}
+        turnstileSiteKey="test-site-key"
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Generate AI Captions" }));
+    fireEvent.click(screen.getByRole("button", { name: "Continue With AI" }));
+    const generateButton = screen.getByRole("button", { name: "Generate 5 Captions" });
+
+    act(() => callbacks().callback("synthetic-turnstile-token"));
+    expect(generateButton).toBeEnabled();
+    act(() => callbacks()["expired-callback"]());
+
+    expect(generateButton).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Retry verification" })).toBeInTheDocument();
+    expect(requestAiCaptions).not.toHaveBeenCalled();
   });
 });
