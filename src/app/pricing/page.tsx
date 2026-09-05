@@ -68,6 +68,11 @@ const faqs = [
       "Click the Creator Plan button and complete your payment securely through Creem.",
   },
   {
+    question: "How do I activate Creator after purchase?",
+    answer:
+      "Open the Creem purchase email, copy the License Key, then return to MemePhoto AI and paste it into the Creator License panel. Your license can be activated on up to 3 browsers.",
+  },
+  {
     question: "Do you store uploaded photos?",
     answer:
       "Manual editing stays in your browser. Optional AI captions only send a compressed copy after consent; MemePhoto AI does not intentionally save that image in an application database.",
@@ -112,7 +117,12 @@ export default function PricingPage() {
               ))}
             </ul>
             {plan.href === "creem" ? (
-              <CreatorCheckoutButton>{plan.cta}</CreatorCheckoutButton>
+              <>
+                <CreatorCheckoutButton>{plan.cta}</CreatorCheckoutButton>
+                <p className="relative mt-3 max-w-sm text-xs font-semibold leading-5 text-zinc-700">
+                  Secure checkout by Creem. After payment, your License Key is sent by email.
+                </p>
+              </>
             ) : plan.href ? (
               <Link
                 href={plan.href}

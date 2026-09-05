@@ -62,6 +62,7 @@ describe("MemeGenerator export entitlement", () => {
     fireEvent.click(download);
     expect(await screen.findByRole("dialog", { name: "Upgrade to Creator" })).toBeVisible();
     expect(screen.getAllByRole("dialog", { name: "Upgrade to Creator" })).toHaveLength(1);
+    expect(screen.getByText("$9 one-time purchase — not a subscription.")).toBeVisible();
     expect(appendChildSpy).toHaveBeenCalled();
     expect(screen.getByRole("button", { name: "Continue with Free" })).toBeVisible();
 

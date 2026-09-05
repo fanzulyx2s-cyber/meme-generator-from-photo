@@ -28,9 +28,19 @@ export default function SuccessPage() {
               Payment completed
             </h1>
             <p className="relative mt-5 max-w-2xl text-lg font-semibold leading-8 text-zinc-600">
-              Thank you for your purchase. Check your purchase email for your
-              License Key, then enter it in the Creator License panel to
-              activate watermark-free exports on this browser.
+              Thank you for your purchase. Activate Creator on this browser in
+              three quick steps:
+            </p>
+            <ol className="relative mt-5 list-decimal space-y-2 pl-6 text-lg font-semibold leading-8 text-zinc-600">
+              <li>Open the Creem purchase email.</li>
+              <li>Copy your License Key.</li>
+              <li>
+                Return to MemePhoto AI and paste it into the Creator License
+                panel.
+              </li>
+            </ol>
+            <p className="relative mt-4 max-w-2xl text-sm font-semibold leading-6 text-zinc-600">
+              Your Creator license can be activated on up to 3 browsers.
             </p>
             <p className="relative mt-4 max-w-2xl text-sm font-semibold leading-6 text-zinc-600">
               Need help? Contact{" "}

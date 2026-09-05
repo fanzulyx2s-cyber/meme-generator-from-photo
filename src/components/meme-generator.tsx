@@ -2733,6 +2733,9 @@ export function MemeGenerator({
             <p className="mt-3 text-sm font-semibold leading-6 text-zinc-600">
               Creator keeps your original canvas resolution and removes the MemePhoto AI platform watermark. Free downloads stay unlimited with a watermark and a maximum 1080px edge.
             </p>
+            <p className="mt-3 text-sm font-bold text-zinc-700">
+              $9 one-time purchase — not a subscription.
+            </p>
             <div className="mt-6 flex flex-col gap-3 sm:flex-row">
               <a
                 href="/pricing"
