@@ -21,6 +21,7 @@ import {
   getExportPolicy,
   shouldShowCreatorUpgrade,
 } from "../lib/export-policy";
+import { trackCreatorConversion } from "../lib/analytics/ga4";
 
 const canvasSize = 1000;
 
@@ -1992,6 +1993,7 @@ export function MemeGenerator({
 
     if (shouldShowCreatorUpgrade(nextCount, hasShownCreatorUpgrade)) {
       window.localStorage.setItem(creatorUpgradeShownStorageKey, "true");
+      trackCreatorConversion("creator_upgrade_shown");
       setShowCreatorUpgrade(true);
     }
   }

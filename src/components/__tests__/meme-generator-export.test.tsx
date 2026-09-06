@@ -11,9 +11,15 @@ let creatorStatus = false;
 let appendChildSpy: ReturnType<typeof vi.spyOn>;
 let toDataUrlSpy: ReturnType<typeof vi.spyOn>;
 
+const { trackCreatorConversion } = vi.hoisted(() => ({
+  trackCreatorConversion: vi.fn(),
+}));
+
 vi.mock("../../hooks/use-creator-license", () => ({
   useCreatorLicense: () => ({ isCreator: creatorStatus }),
 }));
+
+vi.mock("../../lib/analytics/ga4", () => ({ trackCreatorConversion }));
 
 const canvasContext = new Proxy(
   {},
@@ -26,6 +32,7 @@ const canvasContext = new Proxy(
 describe("MemeGenerator export entitlement", () => {
   beforeEach(() => {
     creatorStatus = false;
+    trackCreatorConversion.mockClear();
     window.localStorage.clear();
     vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
       callback(0);
@@ -62,6 +69,7 @@ describe("MemeGenerator export entitlement", () => {
     fireEvent.click(download);
     expect(await screen.findByRole("dialog", { name: "Upgrade to Creator" })).toBeVisible();
     expect(screen.getAllByRole("dialog", { name: "Upgrade to Creator" })).toHaveLength(1);
+    expect(trackCreatorConversion).toHaveBeenCalledWith("creator_upgrade_shown");
     expect(screen.getByText("$9 one-time purchase — not a subscription.")).toBeVisible();
     expect(appendChildSpy).toHaveBeenCalled();
     expect(screen.getByRole("button", { name: "Continue with Free" })).toBeVisible();

@@ -1,7 +1,8 @@
 "use client";
 
-import { FormEvent, useState } from "react";
-import { useCreatorLicense } from "@/hooks/use-creator-license";
+import { FormEvent, useEffect, useState } from "react";
+import { trackCreatorConversion } from "../lib/analytics/ga4";
+import { useCreatorLicense } from "../hooks/use-creator-license";
 
 type CreatorLicensePanelProps = {
   variant?: "full" | "compact";
@@ -23,6 +24,10 @@ export function CreatorLicensePanel({
     activationLimit,
   } = useCreatorLicense();
   const checkoutUrl = process.env.NEXT_PUBLIC_CREEM_CHECKOUT_URL;
+
+  useEffect(() => {
+    trackCreatorConversion("creator_activation_opened");
+  }, []);
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -161,6 +166,9 @@ export function CreatorLicensePanel({
                   return;
                 }
 
+                trackCreatorConversion("creator_checkout_clicked", {
+                  source: "creator_license_panel",
+                });
                 window.location.href = checkoutUrl;
               }}
               className="rounded-full border border-zinc-950/15 bg-white px-5 py-3 text-sm font-black text-zinc-950 transition hover:border-zinc-950"
