@@ -176,9 +176,20 @@ export default function PrivacyPage() {
 
       <InfoCard title="Cookies and Analytics">
         <p>
-          MemePhoto AI does not currently use advertising cookies or third-party
-          behavioral advertising trackers. Hosting, security, or payment
-          providers may use essential technologies needed to operate their
+          MemePhoto AI may use Google Analytics to measure anonymous page usage
+          and aggregated Creator conversion activity, such as an upgrade prompt
+          display, a Creator checkout click, an activation-panel display, or a
+          payment-success page view.
+        </p>
+        <p>
+          MemePhoto AI does not send photos, image data, caption text, email
+          addresses, License Keys, payment card details, order references, or
+          user-entered content as Google Analytics event data.
+        </p>
+        <p>
+          MemePhoto AI does not use advertising cookies or third-party
+          behavioral advertising trackers. Hosting, security, payment, and
+          analytics providers may use technologies needed to operate their
           services.
         </p>
       </InfoCard>
