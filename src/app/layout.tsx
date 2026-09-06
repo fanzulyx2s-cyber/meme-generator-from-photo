@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { GoogleAnalytics } from "@/components/google-analytics";
 import { siteConfig } from "@/lib/site-config";
 
 import "./globals.css";
@@ -44,7 +45,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="h-full antialiased">
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        <GoogleAnalytics />
+        {children}
+      </body>
     </html>
   );
 }

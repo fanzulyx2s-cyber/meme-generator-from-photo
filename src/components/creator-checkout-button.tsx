@@ -2,6 +2,8 @@
 
 import type { ReactNode } from "react";
 
+import { trackCreatorConversion } from "../lib/analytics/ga4";
+
 type CreatorCheckoutButtonProps = {
   children: ReactNode;
 };
@@ -15,6 +17,7 @@ export function CreatorCheckoutButton({ children }: CreatorCheckoutButtonProps) 
       return;
     }
 
+    trackCreatorConversion("creator_checkout_clicked", { source: "pricing_page" });
     window.location.href = checkoutUrl;
   };
 

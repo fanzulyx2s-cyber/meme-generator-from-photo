@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { createPageMetadata } from "@/lib/metadata";
+import { ConversionEventTracker } from "@/components/google-analytics";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 
@@ -17,6 +18,7 @@ export default function SuccessPage() {
     <div className="min-h-screen bg-[#fff6e8] text-zinc-950">
       <SiteHeader />
       <main className="px-4 py-8 sm:px-6 lg:px-8">
+        <ConversionEventTracker event="creator_purchase_success_viewed" />
         <section className="mx-auto max-w-3xl overflow-hidden rounded-[2.5rem] border border-black/10 bg-white p-6 shadow-[0_24px_80px_rgba(42,31,16,0.12)] md:p-10">
           <div className="relative overflow-hidden rounded-[2rem] border border-black/10 bg-[linear-gradient(135deg,#fffaf3_0%,#fff3bf_48%,#d8fbff_100%)] p-6 md:p-8">
             <div className="pointer-events-none absolute -right-8 -top-8 h-32 w-32 rounded-full bg-white/45" />
