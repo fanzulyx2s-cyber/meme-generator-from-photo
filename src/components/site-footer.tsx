@@ -3,6 +3,7 @@ import Link from "next/link";
 const footerLinks = [
   { label: "Reaction Meme Maker", href: "/photo-reaction-meme-maker" },
   { label: "Photo Meme Guide", href: "/how-to-make-a-meme-from-a-photo" },
+  { label: "Guides", href: "/guides" },
   { label: "Watermark-Free Plan", href: "/no-watermark-meme-maker" },
   { label: "Pricing", href: "/pricing" },
   { label: "Privacy Policy", href: "/privacy" },

@@ -25,7 +25,8 @@ describe("SiteHeader", () => {
   it.each([
     ["/", "Generator"],
     ["/photo-reaction-meme-maker", "Reaction memes"],
-    ["/how-to-make-a-meme-from-a-photo", "How-to guide"],
+    ["/guides", "Guides"],
+    ["/guides/write-top-and-bottom-meme-text", "Guides"],
     ["/pricing", "Pricing"],
     ["/no-watermark-meme-maker", "Pricing"],
   ])("marks %s as the current navigation item", (pathname, label) => {
@@ -43,7 +44,7 @@ describe("SiteHeader", () => {
     "/refund",
     "/contact",
     "/this-page-does-not-exist",
-    "/how-to-make-a-meme-from-a-photo/extra",
+    "/how-to-make-a-meme-from-a-photo",
   ])(
     "does not mark a navigation item current for %s",
     (pathname) => {
