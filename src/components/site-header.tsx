@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 const navItems = [
   { label: "Generator", href: "/#generator", paths: ["/"] },
   { label: "Reaction memes", href: "/photo-reaction-meme-maker", paths: ["/photo-reaction-meme-maker"] },
-  { label: "How-to guide", href: "/how-to-make-a-meme-from-a-photo", paths: ["/how-to-make-a-meme-from-a-photo"] },
+  { label: "Guides", href: "/guides", paths: ["/guides"] },
   { label: "Pricing", href: "/pricing", paths: ["/pricing", "/no-watermark-meme-maker"] },
 ];
 
@@ -25,7 +25,9 @@ export function SiteHeader() {
 
         <nav className="hidden items-center gap-2 rounded-full border border-black/10 bg-white/80 p-1 shadow-sm md:flex">
           {navItems.map((item) => {
-            const isCurrent = item.paths.includes(pathname);
+            const isCurrent = item.paths.some(
+              (path) => pathname === path || (path === "/guides" && pathname.startsWith("/guides/")),
+            );
 
             return (
               <Link
