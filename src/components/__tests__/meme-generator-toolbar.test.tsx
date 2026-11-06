@@ -135,4 +135,32 @@ describe("MemeGenerator editing toolbar", () => {
       "bg-[#ffde59]",
     );
   });
+
+  it("adds a mobile-only download action bar after an image is selected", () => {
+    renderWithMainImage();
+
+    const actions = within(screen.getByLabelText("Mobile editor actions"));
+    expect(actions.getByRole("button", { name: "Download PNG" })).toHaveClass(
+      "min-h-12",
+    );
+    expect(actions.getByRole("button", { name: "Preview" })).toBeVisible();
+  });
+
+  it("keeps low-frequency preset and sticker controls collapsed for mobile CSS", () => {
+    renderWithMainImage();
+
+    const presetToggle = screen.getByRole("button", {
+      name: "Choose a caption preset",
+    });
+    expect(presetToggle).toHaveAttribute("aria-expanded", "false");
+    fireEvent.click(presetToggle);
+    expect(presetToggle).toHaveAttribute("aria-expanded", "true");
+
+    const stickerToggle = screen.getByRole("button", {
+      name: "Open sticker tray",
+    });
+    expect(stickerToggle).toHaveAttribute("aria-expanded", "false");
+    fireEvent.click(stickerToggle);
+    expect(stickerToggle).toHaveAttribute("aria-expanded", "true");
+  });
 });

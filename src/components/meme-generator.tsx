@@ -967,6 +967,8 @@ export function MemeGenerator({
   const [textAboveStickers, setTextAboveStickers] = useState(true);
   const [imageCacheVersion, setImageCacheVersion] = useState(0);
   const [showCreatorUpgrade, setShowCreatorUpgrade] = useState(false);
+  const [captionPresetOpen, setCaptionPresetOpen] = useState(false);
+  const [stickerTrayOpen, setStickerTrayOpen] = useState(false);
   const canvasHeight =
     outputRatios.find((ratio) => ratio.id === outputRatio)?.height ?? canvasSize;
 
@@ -2039,7 +2041,7 @@ export function MemeGenerator({
   }
 
   return (
-    <section id="generator" className="scroll-mt-28">
+    <section id="generator" className="scroll-mt-28 pb-20 md:pb-0">
       <div className="rounded-[2.5rem] border border-black/10 bg-white/82 p-4 shadow-[0_24px_80px_rgba(42,31,16,0.14)] backdrop-blur md:p-6 lg:p-8">
         <div className="mb-6 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
           <div>
@@ -2183,7 +2185,7 @@ export function MemeGenerator({
                   </div>
                 </div>
               </div>
-              <label className="relative mt-5 block rounded-[1.5rem] border border-zinc-200 bg-[#fff7e8]/75 p-3">
+              <div className="relative mt-5 rounded-[1.5rem] border border-zinc-200 bg-[#fff7e8]/75 p-3">
                 <span className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
                   <span>
                     <span className="block text-sm font-black text-zinc-900">
@@ -2197,19 +2199,33 @@ export function MemeGenerator({
                     {captionPresets.length} PRESETS
                   </span>
                 </span>
-                <select
-                  value={selectedPresetId}
-                  onChange={(event) => applyCaptionPreset(event.target.value)}
-                  className="mt-3 w-full rounded-3xl border border-zinc-200 bg-white px-5 py-4 text-sm font-black text-zinc-950 outline-none transition focus:border-zinc-950"
+                <button
+                  type="button"
+                  onClick={() => setCaptionPresetOpen((open) => !open)}
+                  aria-expanded={captionPresetOpen}
+                  aria-controls="caption-preset-picker"
+                  className="mt-3 min-h-11 w-full rounded-3xl border border-zinc-200 bg-white px-5 py-3 text-left text-sm font-black text-zinc-950 md:hidden"
                 >
-                  <option value="">Choose a caption preset</option>
-                  {captionPresets.map((preset, index) => (
-                    <option key={preset.id} value={preset.id}>
-                      {index + 1}. {preset.title} - {preset.top} / {preset.bottom}
-                    </option>
-                  ))}
-                </select>
-              </label>
+                  {captionPresetOpen ? "Hide presets" : "Choose a caption preset"}
+                </button>
+                <div
+                  id="caption-preset-picker"
+                  className={captionPresetOpen ? "mt-3" : "hidden md:mt-3 md:block"}
+                >
+                  <select
+                    value={selectedPresetId}
+                    onChange={(event) => applyCaptionPreset(event.target.value)}
+                    className="w-full rounded-3xl border border-zinc-200 bg-white px-5 py-4 text-sm font-black text-zinc-950 outline-none transition focus:border-zinc-950"
+                  >
+                    <option value="">Choose a caption preset</option>
+                    {captionPresets.map((preset, index) => (
+                      <option key={preset.id} value={preset.id}>
+                        {index + 1}. {preset.title} - {preset.top} / {preset.bottom}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
               <label className="relative mt-5 block">
                 <span className="text-sm font-black text-zinc-800">
                   Top text
@@ -2675,6 +2691,19 @@ export function MemeGenerator({
               center.
             </p>
           </div>
+          <button
+            type="button"
+            onClick={() => setStickerTrayOpen((open) => !open)}
+            aria-expanded={stickerTrayOpen}
+            aria-controls="emoji-sticker-options"
+            className="min-h-11 w-full rounded-full border border-zinc-300 bg-white px-5 py-3 text-sm font-black text-zinc-950 md:hidden"
+          >
+            {stickerTrayOpen ? "Hide sticker tray" : "Open sticker tray"}
+          </button>
+          <div
+            id="emoji-sticker-options"
+            className={stickerTrayOpen ? "mt-4" : "hidden md:mt-0 md:block"}
+          >
           <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-6">
             {stickerOptions.map((option) => (
               <button
@@ -2716,8 +2745,29 @@ export function MemeGenerator({
               </label>
             </div>
           </div>
+          </div>
         </div>
       </div>
+      {imageUrl ? (
+        <div aria-label="Mobile editor actions" className="fixed inset-x-0 bottom-0 z-40 border-t border-black/10 bg-white/95 px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] shadow-[0_-12px_28px_rgba(0,0,0,0.12)] backdrop-blur md:hidden">
+          <div className="mx-auto flex max-w-xl gap-2">
+            <button
+              type="button"
+              onClick={handleDownload}
+              className="min-h-12 flex-1 rounded-full bg-zinc-950 px-5 py-3 text-sm font-black text-white"
+            >
+              Download PNG
+            </button>
+            <button
+              type="button"
+              onClick={scrollToPreviewOnMobile}
+              className="min-h-12 rounded-full border border-zinc-300 bg-white px-5 py-3 text-sm font-black text-zinc-950"
+            >
+              Preview
+            </button>
+          </div>
+        </div>
+      ) : null}
       {showCreatorUpgrade ? (
         <div
           role="dialog"

@@ -56,6 +56,17 @@ describe("Creator conversion events", () => {
     );
   });
 
+  it("keeps the compact Creator panel collapsed until its mobile toggle is used", () => {
+    render(<CreatorLicensePanel variant="compact" />);
+
+    const toggle = screen.getByRole("button", {
+      name: "Unlock Creator access",
+    });
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+  });
+
   it("tracks the Creator license-panel checkout entry point", () => {
     vi.stubEnv("NEXT_PUBLIC_CREEM_CHECKOUT_URL", "https://example.invalid/creator");
 
