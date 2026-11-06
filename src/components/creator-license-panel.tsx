@@ -12,6 +12,7 @@ export function CreatorLicensePanel({
   variant = "full",
 }: CreatorLicensePanelProps) {
   const [licenseKey, setLicenseKey] = useState("");
+  const [compactOpen, setCompactOpen] = useState(false);
   const {
     activateLicense,
     deactivateLicense,
@@ -61,7 +62,21 @@ export function CreatorLicensePanel({
   if (isCreator) {
     return (
       <section className={activeSectionClassName}>
-        <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+        {isCompact ? (
+          <button
+            type="button"
+            onClick={() => setCompactOpen((open) => !open)}
+            aria-expanded={compactOpen}
+            aria-controls="creator-license-content"
+            className="min-h-11 w-full rounded-full border border-zinc-950/15 bg-white px-5 py-3 text-left text-sm font-black text-zinc-950 md:hidden"
+          >
+            {compactOpen ? "Hide Creator access" : "Creator access active"}
+          </button>
+        ) : null}
+        <div
+          id="creator-license-content"
+          className={`${isCompact && !compactOpen ? "hidden md:block" : ""} flex flex-col gap-5 md:flex-row md:items-center md:justify-between`}
+        >
           <div>
             <p className="w-fit rounded-full bg-[#ffde59] px-3 py-1 text-xs font-black uppercase tracking-[0.18em]">
               LICENSE
@@ -103,7 +118,21 @@ export function CreatorLicensePanel({
 
   return (
     <section className={sectionClassName}>
-      <div className={contentClassName}>
+      {isCompact ? (
+        <button
+          type="button"
+          onClick={() => setCompactOpen((open) => !open)}
+          aria-expanded={compactOpen}
+          aria-controls="creator-license-content"
+          className="min-h-11 w-full rounded-full border border-zinc-950/15 bg-white px-5 py-3 text-left text-sm font-black text-zinc-950 md:hidden"
+        >
+          {compactOpen ? "Hide Creator access" : "Unlock Creator access"}
+        </button>
+      ) : null}
+      <div
+        id="creator-license-content"
+        className={`${isCompact && !compactOpen ? "hidden md:block" : ""} ${contentClassName}`}
+      >
         <div className="max-w-2xl">
           <p className="w-fit rounded-full bg-[#ffde59] px-3 py-1 text-xs font-black uppercase tracking-[0.18em]">
             {isCompact ? "CREATOR ACCESS" : "Already purchased?"}
