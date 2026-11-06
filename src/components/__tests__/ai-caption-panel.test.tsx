@@ -22,7 +22,11 @@ const createImageFile = (): File =>
   new File([new Uint8Array([1, 2, 3])], "synthetic-image.jpg", { type: "image/jpeg" });
 
 describe("AiCaptionPanel", () => {
-  afterEach(cleanup);
+  afterEach(() => {
+    cleanup();
+    delete window.turnstile;
+    document.querySelectorAll('script[src^="https://challenges.cloudflare.com/turnstile/"]').forEach((script) => script.remove());
+  });
 
   beforeEach(() => {
     vi.resetAllMocks();
@@ -105,5 +109,26 @@ describe("AiCaptionPanel", () => {
     resolvePreparation?.({ imageBase64: "runtime-value", mimeType: "image/jpeg", byteSize: 12, width: 8, height: 8 });
     expect(await screen.findAllByRole("button", { name: "Use This Caption" })).toHaveLength(5);
     expect(requestAiCaptions).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps the Turnstile widget mounted after receiving a verification token", async () => {
+    let issueToken: ((token: string) => void) | undefined;
+    const renderWidget = vi.fn((_target: HTMLElement, options: { callback: (token: string) => void }) => {
+      issueToken = options.callback;
+      return "widget-1";
+    });
+    Object.defineProperty(window, "turnstile", { configurable: true, value: { render: renderWidget, remove: vi.fn() } });
+    const script = document.createElement("script");
+    script.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
+    document.head.appendChild(script);
+
+    render(<AiCaptionPanel file={createImageFile()} onUseCaption={vi.fn()} turnstileSiteKey="test-site-key" />);
+    fireEvent.click(screen.getByRole("button", { name: "Generate AI Captions" }));
+    fireEvent.click(screen.getByRole("button", { name: "Continue With AI" }));
+    await waitFor(() => expect(renderWidget).toHaveBeenCalledTimes(1));
+
+    act(() => issueToken?.("verified-token"));
+
+    await waitFor(() => expect(renderWidget).toHaveBeenCalledTimes(1));
   });
 });

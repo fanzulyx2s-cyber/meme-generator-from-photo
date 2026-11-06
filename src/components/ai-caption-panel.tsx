@@ -9,23 +9,36 @@ import type { CaptionStyle, MemeCaption } from "../lib/ai/captions/types";
 
 type PanelState = "intro" | "consent" | "options" | "preparing" | "generating" | "results" | "error";
 
-type TurnstileApi = { render: (container: HTMLElement, options: { sitekey: string; action: string; callback: (token: string) => void; "error-callback": () => void; "expired-callback": () => void }) => string };
+type TurnstileApi = { render: (container: HTMLElement, options: { sitekey: string; action: string; callback: (token: string) => void; "error-callback": () => void; "expired-callback": () => void }) => string; remove: (widgetId: string) => void };
 
 declare global { interface Window { turnstile?: TurnstileApi; } }
 
 function TurnstileWidget({ siteKey, onToken, onFailure }: { siteKey: string; onToken: (token: string) => void; onFailure: () => void }) {
   const target = useRef<HTMLDivElement | null>(null);
+  const widgetId = useRef<string | undefined>(undefined);
+  const onTokenRef = useRef(onToken);
+  const onFailureRef = useRef(onFailure);
+
+  useEffect(() => {
+    onTokenRef.current = onToken;
+    onFailureRef.current = onFailure;
+  }, [onFailure, onToken]);
+
   useEffect(() => {
     let active = true;
     const render = () => {
-      if (!active || !target.current || !window.turnstile) return;
-      window.turnstile.render(target.current, { sitekey: siteKey, action: "ai_caption", callback: (token) => active && onToken(token), "error-callback": () => active && onFailure(), "expired-callback": () => active && onFailure() });
+      if (!active || !target.current || !window.turnstile || widgetId.current) return;
+      widgetId.current = window.turnstile.render(target.current, { sitekey: siteKey, action: "ai_caption", callback: (token) => active && onTokenRef.current(token), "error-callback": () => active && onFailureRef.current(), "expired-callback": () => active && onFailureRef.current() });
     };
     const existing = document.querySelector<HTMLScriptElement>('script[src^="https://challenges.cloudflare.com/turnstile/"]');
     if (existing) { existing.addEventListener("load", render, { once: true }); render(); }
     else { const script = document.createElement("script"); script.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"; script.async = true; script.defer = true; script.addEventListener("load", render, { once: true }); document.head.appendChild(script); }
-    return () => { active = false; };
-  }, [siteKey, onToken, onFailure]);
+    return () => {
+      active = false;
+      if (widgetId.current && window.turnstile) window.turnstile.remove(widgetId.current);
+      widgetId.current = undefined;
+    };
+  }, [siteKey]);
   return <div className="mt-4" aria-label="Human verification" ref={target} />;
 }
 
