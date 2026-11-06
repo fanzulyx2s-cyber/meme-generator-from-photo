@@ -4,25 +4,29 @@ import {
   normalizeInstanceId,
   normalizeLicenseKey,
 } from "@/lib/creem-license";
+import { readLicenseJsonRequest } from "../../../../lib/license-request";
 
 export async function POST(request: Request) {
-  let body: unknown;
+  const parsedBody = await readLicenseJsonRequest(request);
 
-  try {
-    body = await request.json();
-  } catch {
+  if (!parsedBody.ok) {
     return NextResponse.json(
       {
         success: false,
-        message: "This browser could not be deactivated. Please try again.",
+        message:
+          parsedBody.status === 415
+            ? "Content-Type must be application/json."
+            : parsedBody.status === 413
+              ? "The license request is too large."
+              : "This browser could not be deactivated. Please try again.",
       },
-      { status: 400 },
+      { status: parsedBody.status },
     );
   }
 
   const payload =
-    body && typeof body === "object" && !Array.isArray(body)
-      ? (body as Record<string, unknown>)
+    parsedBody.body && typeof parsedBody.body === "object" && !Array.isArray(parsedBody.body)
+      ? (parsedBody.body as Record<string, unknown>)
       : null;
   const licenseKey = normalizeLicenseKey(payload?.licenseKey);
   const instanceId = normalizeInstanceId(payload?.instanceId);
