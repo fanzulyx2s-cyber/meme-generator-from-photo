@@ -31,7 +31,8 @@ describe("GA4 analytics", () => {
     });
 
     expect(document.querySelectorAll("script[data-ga4]")).toHaveLength(1);
-    expect(window.dataLayer?.at(-1)).toEqual([
+    expect(typeof window.gtag).toBe("function");
+    expect(Array.from(window.dataLayer?.at(-1) ?? [])).toEqual([
       "event",
       "creator_checkout_clicked",
       { source: "pricing_page" },

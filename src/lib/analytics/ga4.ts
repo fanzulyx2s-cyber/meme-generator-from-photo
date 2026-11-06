@@ -13,7 +13,8 @@ type GaCommand =
 
 declare global {
   interface Window {
-    dataLayer?: GaCommand[];
+    dataLayer?: IArguments[];
+    gtag?: (...args: GaCommand) => void;
   }
 }
 
@@ -41,12 +42,18 @@ export function initializeGa4() {
 
   window.dataLayer ??= [];
 
+  window.gtag ??= function gtag() {
+    // gtag.js consumes the queued Arguments object, matching Google's standard snippet.
+    // eslint-disable-next-line prefer-rest-params
+    window.dataLayer?.push(arguments);
+  };
+
   if (document.querySelector(scriptSelector)) {
     return;
   }
 
-  window.dataLayer.push(["js", new Date()]);
-  window.dataLayer.push(["config", measurementId, { send_page_view: true }]);
+  window.gtag("js", new Date());
+  window.gtag("config", measurementId, { send_page_view: true });
 
   const script = document.createElement("script");
   script.async = true;
@@ -64,5 +71,5 @@ export function trackCreatorConversion(
   }
 
   initializeGa4();
-  window.dataLayer?.push(["event", event, attributes]);
+  window.gtag?.("event", event, attributes);
 }
