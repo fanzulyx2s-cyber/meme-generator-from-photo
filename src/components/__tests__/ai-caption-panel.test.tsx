@@ -12,11 +12,16 @@ const { compressImageForAi, requestAiCaptions } = vi.hoisted(() => ({
   requestAiCaptions: vi.fn(),
 }));
 
+const { trackCreatorConversion } = vi.hoisted(() => ({
+  trackCreatorConversion: vi.fn(),
+}));
+
 vi.mock("../../lib/ai/captions/browser-image", () => ({ compressImageForAi }));
 vi.mock("../../lib/ai/captions/client", async () => ({
   ...(await vi.importActual<typeof import("../../lib/ai/captions/client")>("../../lib/ai/captions/client")),
   requestAiCaptions,
 }));
+vi.mock("../../lib/analytics/ga4", () => ({ trackCreatorConversion }));
 
 const createImageFile = (): File =>
   new File([new Uint8Array([1, 2, 3])], "synthetic-image.jpg", { type: "image/jpeg" });
@@ -139,6 +144,22 @@ describe("AiCaptionPanel", () => {
     resolvePreparation?.({ imageBase64: "runtime-value", mimeType: "image/jpeg", byteSize: 12, width: 8, height: 8 });
     expect(await screen.findAllByRole("button", { name: "Use This Caption" })).toHaveLength(5);
     expect(requestAiCaptions).toHaveBeenCalledTimes(1);
+  });
+
+  it("tracks an AI failure using only a safe error code", async () => {
+    compressImageForAi.mockResolvedValue({ imageBase64: "runtime-value", mimeType: "image/jpeg", byteSize: 12, width: 8, height: 8 });
+    const { AiCaptionClientError } = await import("../../lib/ai/captions/client");
+    requestAiCaptions.mockRejectedValue(new AiCaptionClientError("PROVIDER_TIMEOUT"));
+    render(<AiCaptionPanel file={createImageFile()} onUseCaption={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Generate AI Captions" }));
+    fireEvent.click(screen.getByRole("button", { name: "Continue With AI" }));
+    fireEvent.click(screen.getByRole("button", { name: "Generate 5 Captions" }));
+
+    await screen.findByRole("alert");
+    expect(trackCreatorConversion).toHaveBeenCalledWith("ai_caption_failed", {
+      error_code: "PROVIDER_TIMEOUT",
+    });
   });
 
   it("preloads Turnstile and keeps one widget across style changes", () => {

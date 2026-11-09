@@ -6,6 +6,7 @@ import { compressImageForAi } from "../lib/ai/captions/browser-image";
 import { AiCaptionClientError, requestAiCaptions } from "../lib/ai/captions/client";
 import { captionStyles } from "../lib/ai/captions/types";
 import type { CaptionStyle, MemeCaption } from "../lib/ai/captions/types";
+import { trackCreatorConversion } from "../lib/analytics/ga4";
 
 type PanelState = "intro" | "consent" | "options" | "preparing" | "generating" | "results" | "error";
 
@@ -159,6 +160,27 @@ const errorMessages: Record<string, string> = {
   AI_GENERATION_FAILED: "We couldn't generate captions. Please try again.",
 };
 
+const analyticsAiErrorCodes = new Set([
+  "AI_DISABLED",
+  "MISSING_CONFIGURATION",
+  "INVALID_IMAGE",
+  "INVALID_CONTENT_TYPE",
+  "REQUEST_TOO_LARGE",
+  "IMAGE_TOO_LARGE",
+  "UNSUPPORTED_IMAGE_TYPE",
+  "INVALID_STYLE",
+  "CONTENT_NOT_ALLOWED",
+  "PROVIDER_TIMEOUT",
+  "PROVIDER_RATE_LIMITED",
+  "INVALID_PROVIDER_RESPONSE",
+  "AI_GENERATION_FAILED",
+  "UNSUPPORTED_PROVIDER",
+  "TURNSTILE_REQUIRED",
+  "TURNSTILE_FAILED",
+  "IMAGE_CONTENT_NOT_ALLOWED",
+  "IMAGE_MODERATION_UNAVAILABLE",
+]);
+
 export function AiCaptionPanel({ file, onUseCaption, onReset, turnstileSiteKey }: { file: File; onUseCaption: (caption: MemeCaption) => void; onReset?: () => void; turnstileSiteKey?: string }) {
   const [state, setState] = useState<PanelState>("intro");
   const [style, setStyle] = useState<CaptionStyle>("funny");
@@ -206,6 +228,13 @@ export function AiCaptionPanel({ file, onUseCaption, onReset, turnstileSiteKey }
       const clientError = caught instanceof AiCaptionClientError
         ? caught
         : new AiCaptionClientError(caught && typeof caught === "object" && "code" in caught ? String((caught as { code: string }).code) as never : "AI_GENERATION_FAILED");
+      if (clientError.code !== "REQUEST_ABORTED") {
+        trackCreatorConversion("ai_caption_failed", {
+          error_code: analyticsAiErrorCodes.has(clientError.code)
+            ? clientError.code
+            : "UNKNOWN",
+        });
+      }
       setError(clientError);
       setState("error");
     } finally {

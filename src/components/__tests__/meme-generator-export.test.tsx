@@ -57,26 +57,36 @@ describe("MemeGenerator export entitlement", () => {
     vi.unstubAllGlobals();
   });
 
-  it("shows the optional Creator upgrade once after the third successful free export", async () => {
+  it("allows two free exports, then shows the Creator upgrade and blocks more free downloads", async () => {
     render(<MemeGenerator />);
     appendChildSpy.mockClear();
 
     const download = screen.getAllByRole("button", { name: "Download PNG" })[0];
     fireEvent.click(download);
-    fireEvent.click(download);
     expect(screen.queryByRole("dialog", { name: "Upgrade to Creator" })).not.toBeInTheDocument();
+    expect(trackCreatorConversion).toHaveBeenCalledWith("free_export_success", {
+      export_number: 1,
+    });
 
     fireEvent.click(download);
     expect(await screen.findByRole("dialog", { name: "Upgrade to Creator" })).toBeVisible();
     expect(screen.getAllByRole("dialog", { name: "Upgrade to Creator" })).toHaveLength(1);
     expect(trackCreatorConversion).toHaveBeenCalledWith("creator_upgrade_shown");
+    expect(trackCreatorConversion).toHaveBeenCalledWith("free_export_success", {
+      export_number: 2,
+    });
     expect(screen.getByText("$9 one-time purchase — not a subscription.")).toBeVisible();
     expect(appendChildSpy).toHaveBeenCalled();
-    expect(screen.getByRole("button", { name: "Continue with Free" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Keep editing" })).toBeVisible();
+    expect(screen.getAllByRole("button", { name: "Free exports used" })).toHaveLength(2);
+    expect(appendChildSpy).toHaveBeenCalledTimes(2);
 
-    fireEvent.click(screen.getByRole("button", { name: "Continue with Free" }));
-    fireEvent.click(download);
+    fireEvent.click(screen.getByRole("button", { name: "Keep editing" }));
     expect(screen.queryByRole("dialog", { name: "Upgrade to Creator" })).not.toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "Free exports used" })).toHaveLength(2);
+    fireEvent.click(screen.getAllByRole("button", { name: "Free exports used" })[0]);
+    expect(appendChildSpy).toHaveBeenCalledTimes(2);
+    expect(trackCreatorConversion).toHaveBeenCalledWith("free_export_limit_reached");
   });
 
   it("does not show the free upgrade prompt for Creator exports", () => {

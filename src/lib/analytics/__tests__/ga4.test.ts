@@ -37,4 +37,18 @@ describe("GA4 analytics", () => {
       { source: "pricing_page" },
     ]);
   });
+
+  it("records anonymous export funnel events without user content", () => {
+    vi.stubEnv("NEXT_PUBLIC_GA_MEASUREMENT_ID", "G-ABC1234");
+
+    trackCreatorConversion("free_export_success", { export_number: 2 });
+    trackCreatorConversion("free_export_limit_reached");
+
+    expect(window.dataLayer).toEqual([
+      ["js", expect.any(Date)],
+      ["config", "G-ABC1234", { send_page_view: true }],
+      ["event", "free_export_success", { export_number: 2 }],
+      ["event", "free_export_limit_reached", {}],
+    ]);
+  });
 });

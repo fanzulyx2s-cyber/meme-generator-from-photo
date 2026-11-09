@@ -1,4 +1,5 @@
 export const FREE_EXPORT_MAX_EDGE = 1080;
+export const FREE_EXPORT_LIMIT = 2;
 
 export type ExportTier = "free" | "creator" | "verified_free";
 
@@ -55,5 +56,13 @@ export function shouldShowCreatorUpgrade(
   successfulFreeExports: number,
   hasShownCreatorUpgrade: boolean,
 ) {
-  return successfulFreeExports >= 3 && !hasShownCreatorUpgrade;
+  return successfulFreeExports >= FREE_EXPORT_LIMIT && !hasShownCreatorUpgrade;
+}
+
+export function canUseFreeExport(successfulFreeExports: number) {
+  return successfulFreeExports < FREE_EXPORT_LIMIT;
+}
+
+export function getRemainingFreeExports(successfulFreeExports: number) {
+  return Math.max(0, FREE_EXPORT_LIMIT - successfulFreeExports);
 }

@@ -18,7 +18,9 @@ import {
 import { scrollPreviewIntoViewOnMobile } from "./mobile-preview-scroll";
 import { useCreatorLicense } from "../hooks/use-creator-license";
 import {
+  canUseFreeExport,
   getExportPolicy,
+  getRemainingFreeExports,
   shouldShowCreatorUpgrade,
 } from "../lib/export-policy";
 import { trackCreatorConversion } from "../lib/analytics/ga4";
@@ -468,10 +470,9 @@ function getTextLayerBox(layer: MemeTextLayer, text: string) {
 
 function drawFrame(context: CanvasRenderingContext2D, canvasHeight: number) {
   context.save();
-  context.strokeStyle = "#111111";
-  context.lineWidth = 24;
-  context.lineJoin = "round";
-  context.strokeRect(18, 18, canvasSize - 36, canvasHeight - 36);
+  context.strokeStyle = "#181818";
+  context.lineWidth = 12;
+  context.strokeRect(10, 10, canvasSize - 20, canvasHeight - 20);
   context.restore();
 }
 
@@ -928,6 +929,11 @@ export function MemeGenerator({
     startClientY: number;
     startScale: number;
   } | null>(null);
+  const stickerRotateRef = useRef<{
+    id: number;
+    startAngle: number;
+    startRotation: number;
+  } | null>(null);
   const imageStickerCacheRef = useRef<Map<string, HTMLImageElement>>(new Map());
   const stickerIdRef = useRef(0);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
@@ -967,6 +973,17 @@ export function MemeGenerator({
   const [textAboveStickers, setTextAboveStickers] = useState(true);
   const [imageCacheVersion, setImageCacheVersion] = useState(0);
   const [showCreatorUpgrade, setShowCreatorUpgrade] = useState(false);
+  const [freeExportsUsed, setFreeExportsUsed] = useState(() => {
+    if (typeof window === "undefined") {
+      return 0;
+    }
+
+    const storedCount = Number.parseInt(
+      window.localStorage.getItem(freeExportCountStorageKey) ?? "0",
+      10,
+    );
+    return Number.isFinite(storedCount) ? Math.max(0, storedCount) : 0;
+  });
   const canvasHeight =
     outputRatios.find((ratio) => ratio.id === outputRatio)?.height ?? canvasSize;
 
@@ -1334,6 +1351,7 @@ export function MemeGenerator({
       setSelectedStickerId(null);
       dragRef.current = null;
       resizeRef.current = null;
+      stickerRotateRef.current = null;
       textRotateRef.current = null;
       textDragRef.current = {
         id: textLayer.id,
@@ -1351,6 +1369,7 @@ export function MemeGenerator({
       dragRef.current = null;
       textDragRef.current = null;
       resizeRef.current = null;
+      stickerRotateRef.current = null;
       textResizeRef.current = null;
       textRotateRef.current = null;
       return;
@@ -1360,6 +1379,7 @@ export function MemeGenerator({
     setSelectedTextId(null);
     textResizeRef.current = null;
     textRotateRef.current = null;
+    stickerRotateRef.current = null;
     dragRef.current = {
       id: sticker.id,
       offsetX: point.x - sticker.x,
@@ -1420,6 +1440,7 @@ export function MemeGenerator({
     textDragRef.current = null;
     textResizeRef.current = null;
     textRotateRef.current = null;
+    stickerRotateRef.current = null;
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId);
     }
@@ -1875,6 +1896,69 @@ export function MemeGenerator({
     }
   }
 
+  function getPointerAngleFromSticker(
+    event: ReactPointerEvent<HTMLButtonElement>,
+    sticker: StickerLayer,
+  ) {
+    const canvas = canvasRef.current;
+    if (!canvas) {
+      return 0;
+    }
+
+    const rect = canvas.getBoundingClientRect();
+    const centerX = rect.left + (sticker.x / canvasSize) * rect.width;
+    const centerY = rect.top + (sticker.y / canvasHeight) * rect.height;
+
+    return (Math.atan2(event.clientY - centerY, event.clientX - centerX) * 180) / Math.PI;
+  }
+
+  function handleStickerRotatePointerDown(
+    event: ReactPointerEvent<HTMLButtonElement>,
+    sticker: StickerLayer,
+  ) {
+    event.preventDefault();
+    event.stopPropagation();
+    setSelectedStickerId(sticker.id);
+    setSelectedTextId(null);
+    stickerRotateRef.current = {
+      id: sticker.id,
+      startAngle: getPointerAngleFromSticker(event, sticker),
+      startRotation: sticker.rotation,
+    };
+    event.currentTarget.setPointerCapture(event.pointerId);
+  }
+
+  function handleStickerRotatePointerMove(
+    event: ReactPointerEvent<HTMLButtonElement>,
+  ) {
+    const rotate = stickerRotateRef.current;
+    const sticker = stickers.find((item) => item.id === rotate?.id);
+    if (!rotate || !sticker) {
+      return;
+    }
+
+    const currentAngle = getPointerAngleFromSticker(event, sticker);
+    setStickers((currentStickers) =>
+      currentStickers.map((item) =>
+        item.id === rotate.id
+          ? {
+              ...item,
+              rotation: rotate.startRotation + currentAngle - rotate.startAngle,
+            }
+          : item,
+      ),
+    );
+  }
+
+  function handleStickerRotatePointerUp(
+    event: ReactPointerEvent<HTMLButtonElement>,
+  ) {
+    stickerRotateRef.current = null;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+  }
+
   function deleteStickerById(stickerId: number) {
     const stickerToDelete = stickers.find((sticker) => sticker.id === stickerId);
     if (!stickerToDelete) {
@@ -1990,9 +2074,12 @@ export function MemeGenerator({
       window.localStorage.getItem(creatorUpgradeShownStorageKey) === "true";
 
     window.localStorage.setItem(freeExportCountStorageKey, String(nextCount));
+    setFreeExportsUsed(nextCount);
+    trackCreatorConversion("free_export_success", { export_number: nextCount });
 
     if (shouldShowCreatorUpgrade(nextCount, hasShownCreatorUpgrade)) {
       window.localStorage.setItem(creatorUpgradeShownStorageKey, "true");
+      trackCreatorConversion("free_export_limit_reached");
       trackCreatorConversion("creator_upgrade_shown");
       setShowCreatorUpgrade(true);
     }
@@ -2001,6 +2088,19 @@ export function MemeGenerator({
   function handleDownload() {
     const canvas = canvasRef.current;
     if (!canvas) {
+      return;
+    }
+
+    const storedFreeExportCount = Number.parseInt(
+      window.localStorage.getItem(freeExportCountStorageKey) ?? "0",
+      10,
+    );
+    const successfulFreeExports = Number.isFinite(storedFreeExportCount)
+      ? Math.max(0, storedFreeExportCount)
+      : 0;
+
+    if (!isCreator && !canUseFreeExport(successfulFreeExports)) {
+      setFreeExportsUsed(successfulFreeExports);
       return;
     }
 
@@ -2038,6 +2138,12 @@ export function MemeGenerator({
     }
   }
 
+  const freeExportsRemaining = getRemainingFreeExports(freeExportsUsed);
+  const freeExportsExhausted = !isCreator && freeExportsRemaining === 0;
+  const downloadButtonLabel = freeExportsExhausted
+    ? "Free exports used"
+    : "Download PNG";
+
   return (
     <section id="generator" className="scroll-mt-28">
       <div className="rounded-[2.5rem] border border-black/10 bg-white/82 p-4 shadow-[0_24px_80px_rgba(42,31,16,0.14)] backdrop-blur md:p-6 lg:p-8">
@@ -2058,9 +2164,10 @@ export function MemeGenerator({
           <button
             type="button"
             onClick={handleDownload}
-            className="rounded-full bg-zinc-950 px-6 py-4 text-sm font-black text-white shadow-[0_18px_45px_rgba(0,0,0,0.22)] transition hover:-translate-y-0.5"
+            disabled={freeExportsExhausted}
+            className="rounded-full bg-zinc-950 px-6 py-4 text-sm font-black text-white shadow-[0_18px_45px_rgba(0,0,0,0.22)] transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-55 disabled:hover:translate-y-0"
           >
-            Download PNG
+            {downloadButtonLabel}
           </button>
         </div>
 
@@ -2384,22 +2491,22 @@ export function MemeGenerator({
             </div>
           </div>
 
-          <div ref={previewRef} className="relative self-start scroll-mt-24 overflow-hidden rounded-[2rem] border border-black/10 bg-zinc-950 p-4 shadow-[0_20px_70px_rgba(0,0,0,0.2)]">
+          <div ref={previewRef} className="relative self-start scroll-mt-24 overflow-hidden rounded-[2rem] border border-black/10 bg-[#fff7e8] p-3 shadow-[0_20px_70px_rgba(0,0,0,0.16)] sm:p-4">
             {!imageUrl ? (
               <>
-                <span className="absolute inset-4 rounded-[1.5rem] bg-[radial-gradient(circle,rgba(255,255,255,0.14)_1px,transparent_1px)] [background-size:18px_18px]" />
-                <span className="absolute right-8 top-20 h-24 w-32 rotate-6 rounded-[1.5rem] border border-white/15 bg-white/10" />
-                <span className="absolute bottom-10 left-8 h-16 w-24 -rotate-3 rounded-[1.25rem] bg-[#fff7e8]/10" />
+                <span className="absolute inset-4 rounded-[1.5rem] bg-[radial-gradient(circle,rgba(24,24,24,0.08)_1px,transparent_1px)] [background-size:18px_18px]" />
+                <span className="absolute right-8 top-20 h-24 w-32 rotate-6 rounded-[1.5rem] border border-zinc-950/10 bg-white/55" />
+                <span className="absolute bottom-10 left-8 h-16 w-24 -rotate-3 rounded-[1.25rem] bg-[#ffde59]/30" />
               </>
             ) : null}
-            <div className="relative mb-4 flex items-center justify-between gap-3 px-2 text-white">
+            <div className="relative mb-3 flex items-center justify-between gap-3 px-2 text-zinc-950 sm:mb-4">
               <h3 className="text-xl font-black">Live preview</h3>
-              <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-black uppercase tracking-wide">
+              <span className="rounded-full bg-zinc-950 px-3 py-1 text-xs font-black uppercase tracking-wide text-white">
                 Canvas PNG
               </span>
             </div>
             <div
-              className="relative"
+              className="relative rounded-[1.35rem] border border-zinc-950/15 bg-zinc-950 p-2 shadow-[0_12px_30px_rgba(0,0,0,0.18)] sm:p-3"
               onDragOver={handleCanvasDragOver}
               onDrop={handleCanvasDrop}
             >
@@ -2407,7 +2514,7 @@ export function MemeGenerator({
                 ref={canvasRef}
                 width={canvasSize}
                 height={canvasHeight}
-                className="relative w-full touch-none rounded-[1.5rem] bg-[#f8efe2]"
+                className="relative block w-full touch-none rounded-[0.8rem] bg-[#f8efe2]"
                 style={{ aspectRatio: `${canvasSize} / ${canvasHeight}` }}
                 onPointerDown={handleCanvasPointerDown}
                 onPointerMove={handleCanvasPointerMove}
@@ -2462,8 +2569,23 @@ export function MemeGenerator({
                     top: `${((selectedSticker.y - selectedStickerBox.height / 2) / canvasHeight) * 100}%`,
                     width: `${(selectedStickerBox.width / canvasSize) * 100}%`,
                     height: `${(selectedStickerBox.height / canvasHeight) * 100}%`,
+                    transform: `rotate(${selectedSticker.rotation}deg)`,
+                    transformOrigin: "center",
                   }}
                 >
+                  <button
+                    type="button"
+                    aria-label={`Rotate ${selectedSticker.label}`}
+                    onPointerDown={(event) =>
+                      handleStickerRotatePointerDown(event, selectedSticker)
+                    }
+                    onPointerMove={handleStickerRotatePointerMove}
+                    onPointerUp={handleStickerRotatePointerUp}
+                    onPointerCancel={handleStickerRotatePointerUp}
+                    className="pointer-events-auto absolute -right-3 -top-3 flex h-8 w-8 cursor-grab items-center justify-center rounded-full border-2 border-white bg-[#ffde59] text-base font-black leading-none text-zinc-950 shadow-[0_10px_24px_rgba(0,0,0,0.28)] transition hover:scale-105 hover:bg-white active:cursor-grabbing"
+                  >
+                    ↻
+                  </button>
                   <button
                     type="button"
                     aria-label={`Resize ${selectedSticker.label}`}
@@ -2513,11 +2635,19 @@ export function MemeGenerator({
                 <button
                   type="button"
                   onClick={handleDownload}
-                  className="w-fit rounded-full bg-zinc-950 px-5 py-3 text-sm font-black text-white transition hover:-translate-y-0.5"
+                  disabled={freeExportsExhausted}
+                  className="w-fit rounded-full bg-zinc-950 px-5 py-3 text-sm font-black text-white transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-55 disabled:hover:translate-y-0"
                 >
-                  Download PNG
+                  {downloadButtonLabel}
                 </button>
               </div>
+              {!isCreator ? (
+                <p className="mb-3 text-xs font-bold text-zinc-600">
+                  {freeExportsExhausted
+                    ? "Your 2 free PNG exports for this browser have been used. Upgrade to Creator to keep exporting."
+                    : `${freeExportsRemaining} free PNG export${freeExportsRemaining === 1 ? "" : "s"} remaining in this browser.`}
+                </p>
+              ) : null}
 
               <div className="grid gap-3">
                 <div className="flex flex-wrap items-center gap-2">
@@ -2733,7 +2863,7 @@ export function MemeGenerator({
               Upgrade to Creator
             </h3>
             <p className="mt-3 text-sm font-semibold leading-6 text-zinc-600">
-              Creator keeps your original canvas resolution and removes the MemePhoto AI platform watermark. Free downloads stay unlimited with a watermark and a maximum 1080px edge.
+              You have used both free PNG exports for this browser. Creator removes the MemePhoto AI platform watermark and keeps your original canvas resolution.
             </p>
             <p className="mt-3 text-sm font-bold text-zinc-700">
               $9 one-time purchase — not a subscription.
@@ -2750,7 +2880,7 @@ export function MemeGenerator({
                 onClick={() => setShowCreatorUpgrade(false)}
                 className="rounded-full border border-zinc-300 bg-white px-5 py-3 text-sm font-black text-zinc-700 transition hover:border-zinc-950 hover:text-zinc-950"
               >
-                Continue with Free
+                Keep editing
               </button>
             </div>
           </div>

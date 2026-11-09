@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  FREE_EXPORT_LIMIT,
   FREE_EXPORT_MAX_EDGE,
+  canUseFreeExport,
   getExportPolicy,
   getFreeExportDimensions,
+  getRemainingFreeExports,
   shouldShowCreatorUpgrade,
 } from "../export-policy";
 
@@ -40,9 +43,19 @@ describe("ExportPolicy", () => {
     });
   });
 
-  it("shows the optional Creator upgrade only after the third successful free export", () => {
+  it("limits free PNG exports to two per browser", () => {
+    expect(FREE_EXPORT_LIMIT).toBe(2);
+    expect(canUseFreeExport(0)).toBe(true);
+    expect(canUseFreeExport(1)).toBe(true);
+    expect(canUseFreeExport(2)).toBe(false);
+    expect(getRemainingFreeExports(0)).toBe(2);
+    expect(getRemainingFreeExports(1)).toBe(1);
+    expect(getRemainingFreeExports(2)).toBe(0);
+  });
+
+  it("shows the Creator upgrade after the second successful free export", () => {
     expect(shouldShowCreatorUpgrade(1, false)).toBe(false);
-    expect(shouldShowCreatorUpgrade(2, false)).toBe(false);
+    expect(shouldShowCreatorUpgrade(2, false)).toBe(true);
     expect(shouldShowCreatorUpgrade(3, false)).toBe(true);
     expect(shouldShowCreatorUpgrade(8, true)).toBe(false);
   });
