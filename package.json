@@ -8,15 +8,15 @@
     "start": "next start",
     "lint": "eslint",
     "test:ai-models": "node scripts/compare-gemini-caption-models.mjs",
-    "test:ai": "vitest run src/lib/ai/captions src/lib/analytics src/app/api/ai-meme-captions src/components/__tests__/ai-caption-panel.test.tsx src/components/__tests__/creator-conversion-events.test.tsx src/components/__tests__/meme-generator-export.test.tsx src/components/__tests__/meme-generator-mobile-scroll.test.tsx src/components/__tests__/site-header.test.tsx src/components/__tests__/meme-generator-toolbar.test.tsx src/components/__tests__/meme-text-layout.test.ts"
+    "test:ai": "vitest run src/lib/ai/captions src/lib/analytics src/lib/license-request.test.ts src/app/api/ai-meme-captions src/app/api/license src/components/__tests__/ai-caption-panel.test.tsx src/components/__tests__/creator-conversion-events.test.tsx src/components/__tests__/meme-generator-export.test.tsx src/components/__tests__/meme-generator-mobile-scroll.test.tsx src/components/__tests__/site-header.test.tsx src/components/__tests__/meme-generator-toolbar.test.tsx src/components/__tests__/meme-text-layout.test.ts"
   },
   "dependencies": {
     "@google/genai": "^2.13.0",
-    "next": "16.2.10",
+    "next": "16.4.6",
     "react": "19.2.4",
     "react-dom": "19.2.4",
-    "sharp": "^0.34.5",
-    "zod": "^4.4.3"
+    "sharp": "0.35.5",
+    "zod": "4.6.6"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
@@ -27,10 +27,14 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "16.2.10",
+    "eslint-config-next": "16.4.6",
     "jsdom": "^29.1.1",
     "tailwindcss": "^4",
     "typescript": "^5",
     "vitest": "^4.1.10"
+  },
+  "overrides": {
+    "nanoid": "3.3.18",
+    "source-map-js": "1.2.2"
   }
 }
