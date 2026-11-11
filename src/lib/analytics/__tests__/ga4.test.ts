@@ -49,17 +49,17 @@ describe("GA4 analytics", () => {
     expect(events).toHaveLength(4);
     expect(events?.[0]?.[0]).toBe("js");
     expect(events?.[0]?.[1]).toBeInstanceOf(Date);
-    expect(events?.[1]).toEqual([
+    expect(Array.from(events?.[1] ?? [])).toEqual([
       "config",
       "G-ABC1234",
       { send_page_view: true },
     ]);
-    expect(events?.[2]).toEqual([
+    expect(Array.from(events?.[2] ?? [])).toEqual([
       "event",
       "free_export_success",
       { export_number: 2 },
     ]);
-    expect(events?.[3]).toEqual([
+    expect(Array.from(events?.[3] ?? [])).toEqual([
       "event",
       "free_export_limit_reached",
       {},
