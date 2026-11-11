@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useId, useMemo, useState } from "react";
 
+import { trackCreatorConversion } from "../lib/analytics/ga4";
+
 const licenseKeyStorageKey = "memephotoai_license_key";
 const instanceIdStorageKey = "memephotoai_license_instance_id";
 const instanceNameStorageKey = "memephotoai_license_instance_name";
@@ -180,8 +182,10 @@ export function useCreatorLicense() {
         window.localStorage.setItem(instanceIdStorageKey, data.instanceId);
         window.localStorage.setItem(instanceNameStorageKey, instanceName);
         applyCreatorState(data);
+        trackCreatorConversion("creator_license_activated");
         emitLicenseChanged(sourceId);
       } catch (requestError) {
+        trackCreatorConversion("creator_license_activation_failed");
         setStatus("error");
         setError(
           requestError instanceof Error

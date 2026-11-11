@@ -38,4 +38,32 @@ describe("GA4 analytics", () => {
       { source: "pricing_page" },
     ]);
   });
+
+  it("records anonymous export funnel events without user content", () => {
+    vi.stubEnv("NEXT_PUBLIC_GA_MEASUREMENT_ID", "G-ABC1234");
+
+    trackCreatorConversion("free_export_success", { export_number: 2 });
+    trackCreatorConversion("free_export_limit_reached");
+
+    const events = window.dataLayer;
+
+    expect(events).toHaveLength(4);
+    expect(events?.[0]?.[0]).toBe("js");
+    expect(events?.[0]?.[1]).toBeInstanceOf(Date);
+    expect(Array.from(events?.[1] ?? [])).toEqual([
+      "config",
+      "G-ABC1234",
+      { send_page_view: true },
+    ]);
+    expect(Array.from(events?.[2] ?? [])).toEqual([
+      "event",
+      "free_export_success",
+      { export_number: 2 },
+    ]);
+    expect(Array.from(events?.[3] ?? [])).toEqual([
+      "event",
+      "free_export_limit_reached",
+      {},
+    ]);
+  });
 });

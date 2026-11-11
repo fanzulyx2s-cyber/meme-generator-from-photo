@@ -112,6 +112,7 @@ describe("MemeGenerator editing toolbar", () => {
 
     expectCanvasSettings();
     expect(toolbar().getByRole("button", { name: "Delete" })).toBeVisible();
+    expect(screen.getByRole("button", { name: /^Rotate [A-Za-z]/ })).toBeVisible();
   });
 
   it("keeps Canvas Settings visible after selecting an image sticker", () => {
@@ -124,6 +125,7 @@ describe("MemeGenerator editing toolbar", () => {
 
     expectCanvasSettings();
     expect(toolbar().getByRole("button", { name: "Border On" })).toBeVisible();
+    expect(screen.getByRole("button", { name: /^Rotate [A-Za-z]/ })).toBeVisible();
   });
 
   it("continues to update the selected output ratio", () => {

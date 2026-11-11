@@ -2,14 +2,27 @@ export type CreatorConversionEvent =
   | "creator_upgrade_shown"
   | "creator_checkout_clicked"
   | "creator_activation_opened"
-  | "creator_purchase_success_viewed";
+  | "creator_license_activated"
+  | "creator_license_activation_failed"
+  | "creator_purchase_success_viewed"
+  | "free_export_success"
+  | "free_export_limit_reached"
+  | "ai_caption_failed";
 
 export type CheckoutSource = "pricing_page" | "creator_license_panel";
 
 type GaCommand =
   | ["js", Date]
   | ["config", string, { send_page_view: true }]
-  | ["event", CreatorConversionEvent, { source?: CheckoutSource }];
+  | [
+      "event",
+      CreatorConversionEvent,
+      {
+        source?: CheckoutSource;
+        export_number?: number;
+        error_code?: string;
+      },
+    ];
 
 declare global {
   interface Window {
@@ -64,7 +77,11 @@ export function initializeGa4() {
 
 export function trackCreatorConversion(
   event: CreatorConversionEvent,
-  attributes: { source?: CheckoutSource } = {},
+  attributes: {
+    source?: CheckoutSource;
+    export_number?: number;
+    error_code?: string;
+  } = {},
 ) {
   if (typeof window === "undefined" || !configuredMeasurementId()) {
     return;
