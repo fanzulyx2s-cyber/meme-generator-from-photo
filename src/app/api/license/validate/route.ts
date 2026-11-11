@@ -4,25 +4,28 @@ import {
   normalizeInstanceId,
   normalizeLicenseKey,
 } from "@/lib/creem-license";
+import { parseLicenseRequest } from "@/lib/license-request";
 
 export async function POST(request: Request) {
-  let body: unknown;
+  const parsed = await parseLicenseRequest(request, "instanceId");
 
-  try {
-    body = await request.json();
-  } catch {
+  if (!parsed.ok) {
     return NextResponse.json(
-      { success: false, message: "Please activate your license again." },
-      { status: 400 },
+      {
+        success: false,
+        message:
+          parsed.status === 415
+            ? "License requests must use application/json."
+            : parsed.status === 413
+              ? "The license request is too large."
+              : "Please activate your license again.",
+      },
+      { status: parsed.status },
     );
   }
 
-  const payload =
-    body && typeof body === "object" && !Array.isArray(body)
-      ? (body as Record<string, unknown>)
-      : null;
-  const licenseKey = normalizeLicenseKey(payload?.licenseKey);
-  const instanceId = normalizeInstanceId(payload?.instanceId);
+  const licenseKey = normalizeLicenseKey(parsed.body.licenseKey);
+  const instanceId = normalizeInstanceId(parsed.body.instanceId);
 
   if (!licenseKey || !instanceId) {
     return NextResponse.json(
