@@ -3,6 +3,7 @@
 import "@testing-library/jest-dom/vitest";
 
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { renderToString } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { MemeGenerator } from "../meme-generator";
@@ -107,5 +108,18 @@ describe("MemeGenerator export entitlement", () => {
     fireEvent.click(screen.getAllByRole("button", { name: "Download PNG" })[0]);
 
     expect(toDataUrlSpy).toHaveBeenCalledWith("image/png");
+  });
+
+  it("keeps the server markup independent of the browser-only export count", async () => {
+    window.localStorage.setItem("memephotoai_free_export_count", "1");
+
+    expect(renderToString(<MemeGenerator />)).toContain(
+      "2 free PNG exports remaining in this browser.",
+    );
+
+    render(<MemeGenerator />);
+    expect(
+      await screen.findByText("1 free PNG export remaining in this browser."),
+    ).toBeVisible();
   });
 });

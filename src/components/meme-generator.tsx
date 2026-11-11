@@ -973,19 +973,22 @@ export function MemeGenerator({
   const [textAboveStickers, setTextAboveStickers] = useState(true);
   const [imageCacheVersion, setImageCacheVersion] = useState(0);
   const [showCreatorUpgrade, setShowCreatorUpgrade] = useState(false);
-  const [freeExportsUsed, setFreeExportsUsed] = useState(() => {
-    if (typeof window === "undefined") {
-      return 0;
-    }
+  // Keep the server and the first client render identical. The browser-only
+  // export count is applied after hydration below.
+  const [freeExportsUsed, setFreeExportsUsed] = useState(0);
+  const canvasHeight =
+    outputRatios.find((ratio) => ratio.id === outputRatio)?.height ?? canvasSize;
 
+  useEffect(() => {
     const storedCount = Number.parseInt(
       window.localStorage.getItem(freeExportCountStorageKey) ?? "0",
       10,
     );
-    return Number.isFinite(storedCount) ? Math.max(0, storedCount) : 0;
-  });
-  const canvasHeight =
-    outputRatios.find((ratio) => ratio.id === outputRatio)?.height ?? canvasSize;
+
+    setFreeExportsUsed(
+      Number.isFinite(storedCount) ? Math.max(0, storedCount) : 0,
+    );
+  }, []);
 
   const getAutoTextLayout = useCallback((
     position: TextLayerId,
