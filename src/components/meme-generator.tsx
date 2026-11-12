@@ -2105,6 +2105,7 @@ export function MemeGenerator({
 
     if (!isCreator && !canUseFreeExport(successfulFreeExports)) {
       setFreeExportsUsed(successfulFreeExports);
+      setShowCreatorUpgrade(true);
       return;
     }
 
@@ -2168,8 +2169,7 @@ export function MemeGenerator({
           <button
             type="button"
             onClick={handleDownload}
-            disabled={freeExportsExhausted}
-            className="rounded-full bg-zinc-950 px-6 py-4 text-sm font-black text-white shadow-[0_18px_45px_rgba(0,0,0,0.22)] transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-55 disabled:hover:translate-y-0"
+            className="rounded-full bg-zinc-950 px-6 py-4 text-sm font-black text-white shadow-[0_18px_45px_rgba(0,0,0,0.22)] transition hover:-translate-y-0.5"
           >
             {downloadButtonLabel}
           </button>
@@ -2639,8 +2639,7 @@ export function MemeGenerator({
                 <button
                   type="button"
                   onClick={handleDownload}
-                  disabled={freeExportsExhausted}
-                  className="w-fit rounded-full bg-zinc-950 px-5 py-3 text-sm font-black text-white transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-55 disabled:hover:translate-y-0"
+                  className="w-fit rounded-full bg-zinc-950 px-5 py-3 text-sm font-black text-white transition hover:-translate-y-0.5"
                 >
                   {downloadButtonLabel}
                 </button>
