@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars, react-hooks/set-state-in-effect */
 "use client";
 
 import {
@@ -647,125 +646,6 @@ function getStickerRenderSize(sticker: StickerLayer) {
   return { width: maxSide * ratio, height: maxSide };
 }
 
-function drawRoundedRect(
-  context: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  width: number,
-  height: number,
-  radius: number,
-) {
-  context.beginPath();
-  context.roundRect(x, y, width, height, radius);
-}
-
-function drawStickerEye(
-  context: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  radius: number,
-  pupilOffsetX = 0,
-  pupilOffsetY = 0,
-) {
-  context.fillStyle = "#ffffff";
-  context.beginPath();
-  context.arc(x, y, radius, 0, Math.PI * 2);
-  context.fill();
-  context.fillStyle = "#4a2a33";
-  context.beginPath();
-  context.arc(
-    x + pupilOffsetX,
-    y + pupilOffsetY,
-    radius * 0.48,
-    0,
-    Math.PI * 2,
-  );
-  context.fill();
-}
-
-function drawStickerMouth(
-  context: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  width: number,
-  height: number,
-  variant: "flat" | "smile" | "laugh" | "open" | "sad",
-) {
-  context.strokeStyle = "#4a2a33";
-  context.fillStyle = "#4a2a33";
-  context.lineCap = "round";
-  context.lineWidth = Math.max(6, height * 0.22);
-
-  if (variant === "flat") {
-    drawRoundedRect(context, x - width / 2, y - height / 2, width, height, height);
-    context.fill();
-    return;
-  }
-
-  if (variant === "open" || variant === "laugh") {
-    context.beginPath();
-    context.ellipse(x, y, width / 2, height / 2, 0, 0, Math.PI * 2);
-    context.fill();
-    if (variant === "laugh") {
-      context.fillStyle = "#ffffff";
-      context.fillRect(x - width * 0.32, y - height * 0.36, width * 0.64, height * 0.22);
-    }
-    return;
-  }
-
-  context.beginPath();
-  if (variant === "sad") {
-    context.arc(x, y + height * 0.85, width / 2, Math.PI * 1.15, Math.PI * 1.85);
-  } else {
-    context.arc(x, y - height * 0.3, width / 2, Math.PI * 0.15, Math.PI * 0.85);
-  }
-  context.stroke();
-}
-
-function getEmojiMood(label: string) {
-  if (
-    [
-      "Laugh",
-      "Rolling Laugh",
-      "Laugh Cat",
-      "Silly",
-      "Big Laugh",
-      "Celebrate",
-      "Clap",
-    ].includes(label)
-  ) {
-    return "laugh";
-  }
-
-  if (["Shocked", "Mind Blown", "Scream", "Dizzy"].includes(label)) {
-    return "open";
-  }
-
-  if (["Crying", "Sad", "Tear Smile", "Sleepy"].includes(label)) {
-    return "sad";
-  }
-
-  if (["Eye Roll", "Awkward", "Thinking"].includes(label)) {
-    return "flat";
-  }
-
-  return "smile";
-}
-
-function isFaceStyleSticker(label: string) {
-  return ![
-    "Fire",
-    "Sparkles",
-    "Love",
-    "Cute Love",
-    "Like",
-    "One Hundred",
-    "Perfect",
-    "GOAT",
-    "Snapshot",
-  ].includes(label);
-}
-
 function drawCustomEmojiSticker(
   context: CanvasRenderingContext2D,
   sticker: StickerLayer,
@@ -986,9 +866,15 @@ export function MemeGenerator({
       10,
     );
 
-    setFreeExportsUsed(
-      Number.isFinite(storedCount) ? Math.max(0, storedCount) : 0,
-    );
+    const hydrateExportCount = window.setTimeout(() => {
+      const hydratedCount = Number.isFinite(storedCount)
+        ? Math.max(0, storedCount)
+        : 0;
+
+      setFreeExportsUsed((currentCount) => Math.max(currentCount, hydratedCount));
+    }, 0);
+
+    return () => window.clearTimeout(hydrateExportCount);
   }, []);
 
   const getAutoTextLayout = useCallback((
@@ -2105,6 +1991,7 @@ export function MemeGenerator({
 
     if (!isCreator && !canUseFreeExport(successfulFreeExports)) {
       setFreeExportsUsed(successfulFreeExports);
+      setShowCreatorUpgrade(true);
       return;
     }
 
@@ -2168,8 +2055,7 @@ export function MemeGenerator({
           <button
             type="button"
             onClick={handleDownload}
-            disabled={freeExportsExhausted}
-            className="rounded-full bg-zinc-950 px-6 py-4 text-sm font-black text-white shadow-[0_18px_45px_rgba(0,0,0,0.22)] transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-55 disabled:hover:translate-y-0"
+            className="rounded-full bg-zinc-950 px-6 py-4 text-sm font-black text-white shadow-[0_18px_45px_rgba(0,0,0,0.22)] transition hover:-translate-y-0.5"
           >
             {downloadButtonLabel}
           </button>
@@ -2639,8 +2525,7 @@ export function MemeGenerator({
                 <button
                   type="button"
                   onClick={handleDownload}
-                  disabled={freeExportsExhausted}
-                  className="w-fit rounded-full bg-zinc-950 px-5 py-3 text-sm font-black text-white transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-55 disabled:hover:translate-y-0"
+                  className="w-fit rounded-full bg-zinc-950 px-5 py-3 text-sm font-black text-white transition hover:-translate-y-0.5"
                 >
                   {downloadButtonLabel}
                 </button>

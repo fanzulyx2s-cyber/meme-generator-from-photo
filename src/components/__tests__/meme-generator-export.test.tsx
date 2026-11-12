@@ -58,7 +58,7 @@ describe("MemeGenerator export entitlement", () => {
     vi.unstubAllGlobals();
   });
 
-  it("allows two free exports, then shows the Creator upgrade and blocks more free downloads", async () => {
+  it("allows two free exports, then reopens the Creator upgrade from either export button", async () => {
     render(<MemeGenerator />);
     appendChildSpy.mockClear();
 
@@ -84,10 +84,20 @@ describe("MemeGenerator export entitlement", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Keep editing" }));
     expect(screen.queryByRole("dialog", { name: "Upgrade to Creator" })).not.toBeInTheDocument();
-    expect(screen.getAllByRole("button", { name: "Free exports used" })).toHaveLength(2);
-    fireEvent.click(screen.getAllByRole("button", { name: "Free exports used" })[0]);
+    const exhaustedButtons = screen.getAllByRole("button", { name: "Free exports used" });
+    expect(exhaustedButtons).toHaveLength(2);
+    expect(exhaustedButtons[0]).toBeEnabled();
+    expect(exhaustedButtons[1]).toBeEnabled();
+
+    fireEvent.click(exhaustedButtons[0]);
+    expect(screen.getByRole("dialog", { name: "Upgrade to Creator" })).toBeVisible();
     expect(appendChildSpy).toHaveBeenCalledTimes(2);
     expect(trackCreatorConversion).toHaveBeenCalledWith("free_export_limit_reached");
+
+    fireEvent.click(screen.getByRole("button", { name: "Keep editing" }));
+    fireEvent.click(screen.getAllByRole("button", { name: "Free exports used" })[1]);
+    expect(screen.getByRole("dialog", { name: "Upgrade to Creator" })).toBeVisible();
+    expect(appendChildSpy).toHaveBeenCalledTimes(2);
   });
 
   it("does not show the free upgrade prompt for Creator exports", () => {
