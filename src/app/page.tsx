@@ -103,6 +103,11 @@ const faqs = [
   },
 ];
 
+const uniqueFaqs = faqs.filter(
+  (faq, index) =>
+    faqs.findIndex((candidate) => candidate.question === faq.question) === index,
+);
+
 const homeStructuredData = [
   {
     "@context": "https://schema.org",
@@ -138,7 +143,7 @@ const homeStructuredData = [
   {
     "@context": "https://schema.org",
     "@type": "FAQPage",
-    mainEntity: faqs.map((faq) => ({
+    mainEntity: uniqueFaqs.map((faq) => ({
       "@type": "Question",
       name: faq.question,
       acceptedAnswer: {
@@ -478,7 +483,7 @@ export default function Home() {
                 Clear answers before you create
               </h2>
               <div className="mt-8 grid gap-3">
-                {faqs.map((faq) => (
+                {uniqueFaqs.map((faq) => (
                   <details
                     key={faq.question}
                     className="group relative overflow-hidden rounded-[1.5rem] border border-black/10 bg-gradient-to-br from-white via-[#fffaf3] to-[#f5fbff] p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md open:border-zinc-950/20 open:shadow-md"

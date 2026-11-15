@@ -76,10 +76,17 @@ export function CreatorLicensePanel({
                 Activations: {activation} of {activationLimit}
               </p>
             ) : null}
-            <p className="mt-3 max-w-2xl text-xs font-semibold leading-5 text-zinc-500">
-              Deactivating releases this browser&apos;s activation slot in Creem
-              and removes locally saved Creator access.
-            </p>
+            <div
+              role="note"
+              className="mt-4 max-w-2xl rounded-[1.25rem] border border-amber-400/70 bg-amber-50 px-4 py-3 text-sm font-semibold leading-6 text-amber-950"
+            >
+              <p className="font-black">Before clearing browser data or switching devices</p>
+              <p className="mt-1">
+                Click “Deactivate this browser” first to release this
+                activation slot. Clearing browser data alone does not release
+                it in Creem.
+              </p>
+            </div>
             {error ? (
               <p className="mt-3 rounded-[1rem] border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-700">
                 {error}
