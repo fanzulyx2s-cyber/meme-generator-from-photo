@@ -13,20 +13,22 @@ const { trackCreatorConversion } = vi.hoisted(() => ({
   trackCreatorConversion: vi.fn(),
 }));
 
+const creatorLicenseState = {
+  activateLicense: vi.fn(),
+  deactivateLicense: vi.fn(),
+  isCreator: false,
+  status: "idle",
+  error: null,
+  notice: null,
+  loading: false,
+  activation: null,
+  activationLimit: null,
+};
+
 vi.mock("../../lib/analytics/ga4", () => ({ trackCreatorConversion }));
 
 vi.mock("../../hooks/use-creator-license", () => ({
-  useCreatorLicense: () => ({
-    activateLicense: vi.fn(),
-    deactivateLicense: vi.fn(),
-    isCreator: false,
-    status: "idle",
-    error: null,
-    notice: null,
-    loading: false,
-    activation: null,
-    activationLimit: null,
-  }),
+  useCreatorLicense: () => creatorLicenseState,
 }));
 
 describe("Creator conversion events", () => {
@@ -34,6 +36,15 @@ describe("Creator conversion events", () => {
     cleanup();
     vi.clearAllMocks();
     vi.unstubAllEnvs();
+    Object.assign(creatorLicenseState, {
+      isCreator: false,
+      status: "idle",
+      error: null,
+      notice: null,
+      loading: false,
+      activation: null,
+      activationLimit: null,
+    });
   });
 
   it("tracks the pricing checkout entry point", () => {
@@ -54,6 +65,26 @@ describe("Creator conversion events", () => {
     expect(trackCreatorConversion).toHaveBeenCalledWith(
       "creator_activation_opened",
     );
+  });
+
+  it("prominently explains how to release an activation before clearing data", () => {
+    Object.assign(creatorLicenseState, {
+      isCreator: true,
+      activation: 1,
+      activationLimit: 3,
+    });
+
+    render(<CreatorLicensePanel />);
+
+    expect(screen.getByRole("note")).toHaveTextContent(
+      "Before clearing browser data or switching devices",
+    );
+    expect(screen.getByRole("note")).toHaveTextContent(
+      "Clearing browser data alone does not release it in Creem.",
+    );
+    expect(
+      screen.getByRole("button", { name: "Deactivate this browser" }),
+    ).toBeInTheDocument();
   });
 
   it("tracks the Creator license-panel checkout entry point", () => {
