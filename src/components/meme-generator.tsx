@@ -141,6 +141,21 @@ const stickerOptions: StickerOption[] = [
   { emoji: "📸", label: "Snapshot" },
 ];
 
+const holidayStickerOptions: StickerOption[] = [
+  { emoji: "🎅", label: "Santa Hat" },
+  { emoji: "🦌", label: "Reindeer" },
+  { emoji: "🔴", label: "Red Nose" },
+  { emoji: "💡", label: "Holiday Light" },
+  { emoji: "🎄", label: "Christmas Tree" },
+  { emoji: "🎁", label: "Gift" },
+  { emoji: "❄️", label: "Snowflake" },
+  { emoji: "⛄", label: "Snowman" },
+  { emoji: "🔔", label: "Jingle Bell" },
+  { emoji: "🍬", label: "Candy" },
+  { emoji: "🧦", label: "Stocking" },
+  { emoji: "🌟", label: "Christmas Star" },
+];
+
 const captionPresets: CaptionPreset[] = [
   {
     id: "group-chat-reaction",
@@ -2712,6 +2727,40 @@ export function MemeGenerator({
                 </span>
               </button>
             ))}
+          </div>
+          <div className="mt-6 border-t border-black/10 pt-5">
+            <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="w-fit rounded-full bg-[#d8ff63] px-3 py-1 text-xs font-black uppercase tracking-[0.18em] text-zinc-950">
+                  Seasonal stickers
+                </p>
+                <h4 className="mt-2 text-lg font-black text-zinc-950">
+                  Christmas stickers
+                </h4>
+              </div>
+              <p className="text-sm font-semibold text-zinc-600">
+                Add a festive touch, then drag, resize, or rotate it.
+              </p>
+            </div>
+            <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+              {holidayStickerOptions.map((option) => (
+                <button
+                  key={`${option.emoji}-${option.label}`}
+                  type="button"
+                  draggable
+                  onDragStart={(event) => handleStickerDragStart(event, option)}
+                  onClick={() => handleAddSticker(option)}
+                  className="group rounded-[1.25rem] border border-black/10 bg-white p-3 text-center shadow-sm transition hover:-translate-y-0.5 hover:border-zinc-950 hover:shadow-md"
+                >
+                  <span className="block text-3xl transition group-hover:scale-110">
+                    {option.emoji}
+                  </span>
+                  <span className="mt-2 block text-xs font-black leading-4 text-zinc-700">
+                    {option.label}
+                  </span>
+                </button>
+              ))}
+            </div>
           </div>
           <div className="mt-5 rounded-[1.5rem] border-2 border-dashed border-zinc-300 bg-[#fff7e8] p-4">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">

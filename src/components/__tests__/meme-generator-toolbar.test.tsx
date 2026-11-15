@@ -115,6 +115,16 @@ describe("MemeGenerator editing toolbar", () => {
     expect(screen.getByRole("button", { name: /^Rotate [A-Za-z]/ })).toBeVisible();
   });
 
+  it("adds a Christmas sticker with the existing sticker controls", () => {
+    renderWithMainImage();
+
+    fireEvent.click(screen.getByRole("button", { name: /Santa Hat/ }));
+
+    expectCanvasSettings();
+    expect(toolbar().getByRole("button", { name: "Delete" })).toBeVisible();
+    expect(screen.getByRole("button", { name: /^Rotate [A-Za-z]/ })).toBeVisible();
+  });
+
   it("keeps Canvas Settings visible after selecting an image sticker", () => {
     const view = renderWithMainImage();
     const imageStickerInput = view.container.querySelectorAll(
