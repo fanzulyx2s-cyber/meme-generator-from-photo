@@ -147,4 +147,20 @@ describe("MemeGenerator editing toolbar", () => {
       "bg-[#ffde59]",
     );
   });
+
+  it("keeps one frame control in the toolbar and offers shared text styles", () => {
+    renderWithMainImage();
+
+    expect(screen.getAllByRole("button", { name: "Frame On" })).toHaveLength(1);
+    expect(screen.getByText("Applies to top and bottom text.")).toBeVisible();
+
+    fireEvent.click(screen.getByRole("button", { name: "Apply Christmas text style" }));
+    expect(screen.getByRole("button", { name: "Apply Christmas text style" })).toHaveClass(
+      "bg-zinc-950",
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Customize text style" }));
+    expect(screen.getByRole("combobox", { name: "Text font" })).toBeVisible();
+    expect(screen.getByRole("combobox", { name: "Text color" })).toBeVisible();
+  });
 });

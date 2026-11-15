@@ -68,6 +68,18 @@ type CaptionPreset = {
 
 type OutputRatioId = "square" | "portrait" | "story";
 
+type TextStylePresetId = "classic" | "christmas" | "yellow" | "soft";
+type TextStyleFont = "impact" | "rounded" | "sans";
+
+type MemeTextStyle = {
+  preset: TextStylePresetId | "custom";
+  font: TextStyleFont;
+  fill: string;
+  stroke: string;
+  strokeScale: number;
+  shadow: boolean;
+};
+
 const minStickerScale = 0.3;
 const maxStickerScale = 5;
 const minTextScale = 0.45;
@@ -101,6 +113,19 @@ const outputRatios: Array<{
   { id: "portrait", label: "Portrait 4:5", height: 1250 },
   { id: "story", label: "Story 9:16", height: 1778 },
 ];
+
+const textStylePresets: Record<TextStylePresetId, MemeTextStyle> = {
+  classic: { preset: "classic", font: "impact", fill: "#ffffff", stroke: "#111111", strokeScale: 1, shadow: true },
+  christmas: { preset: "christmas", font: "rounded", fill: "#ffde59", stroke: "#7f1d1d", strokeScale: 1.12, shadow: true },
+  yellow: { preset: "yellow", font: "impact", fill: "#ffde59", stroke: "#111111", strokeScale: 1, shadow: true },
+  soft: { preset: "soft", font: "rounded", fill: "#ffffff", stroke: "#3f3f46", strokeScale: 0.72, shadow: true },
+};
+
+const textStyleFontFamilies: Record<TextStyleFont, string> = {
+  impact: "Impact, Arial Black, system-ui, sans-serif",
+  rounded: '"Arial Rounded MT Bold", "Trebuchet MS", system-ui, sans-serif',
+  sans: "Arial Black, system-ui, sans-serif",
+};
 
 const stickerOptions: StickerOption[] = [
   { emoji: "😂", label: "Laugh" },
@@ -343,6 +368,7 @@ function drawWrappedText(
   context: CanvasRenderingContext2D,
   text: string,
   layer: MemeTextLayer,
+  textStyle: MemeTextStyle,
   alignBottom = false,
   autoLayout?: MemeTextLayout,
 ) {
@@ -354,20 +380,25 @@ function drawWrappedText(
   context.save();
   context.translate(autoLayout?.x ?? layer.x, autoLayout?.y ?? layer.y);
   context.rotate((layer.rotation * Math.PI) / 180);
+  context.shadowColor = textStyle.shadow ? "rgba(0, 0, 0, 0.4)" : "transparent";
+  context.shadowBlur = textStyle.shadow ? 4 : 0;
+  context.shadowOffsetY = textStyle.shadow ? 2 : 0;
 
   if (autoLayout) {
     context.textAlign = "center";
     context.textBaseline = "middle";
     context.lineJoin = "round";
-    context.lineWidth = autoLayout.strokeWidth;
-    context.strokeStyle = "#111111";
-    context.fillStyle = "#ffffff";
-    context.font = `900 ${autoLayout.fontSize}px Impact, Arial Black, system-ui, sans-serif`;
+    context.lineWidth = autoLayout.strokeWidth * textStyle.strokeScale;
+    context.strokeStyle = textStyle.stroke;
+    context.fillStyle = textStyle.fill;
+    context.font = `900 ${autoLayout.fontSize}px ${textStyleFontFamilies[textStyle.font]}`;
     const firstLineY = -((autoLayout.lines.length - 1) * autoLayout.lineHeight) / 2;
 
     autoLayout.lines.forEach((line, index) => {
       const lineY = firstLineY + index * autoLayout.lineHeight;
-      context.strokeText(line, 0, lineY);
+      if (textStyle.strokeScale > 0) {
+        context.strokeText(line, 0, lineY);
+      }
       context.fillText(line, 0, lineY);
     });
     context.restore();
@@ -386,10 +417,10 @@ function drawWrappedText(
     context.textAlign = "center";
     context.textBaseline = "middle";
     context.lineJoin = "round";
-    context.lineWidth = Math.max(7, fontSize * 0.12);
-    context.strokeStyle = "#111111";
-    context.fillStyle = "#ffffff";
-    context.font = `900 ${fontSize}px Impact, Arial Black, system-ui, sans-serif`;
+    context.lineWidth = Math.max(7, fontSize * 0.12) * textStyle.strokeScale;
+    context.strokeStyle = textStyle.stroke;
+    context.fillStyle = textStyle.fill;
+    context.font = `900 ${fontSize}px ${textStyleFontFamilies[textStyle.font]}`;
 
     for (let columnIndex = 0; columnIndex < columnCount; columnIndex += 1) {
       const start = columnIndex * rowsPerColumn;
@@ -400,7 +431,9 @@ function drawWrappedText(
 
       columnChars.forEach((char, charIndex) => {
         const charY = firstY + charIndex * lineHeight;
-        context.strokeText(char, columnX, charY);
+        if (textStyle.strokeScale > 0) {
+          context.strokeText(char, columnX, charY);
+        }
         context.fillText(char, columnX, charY);
       });
     }
@@ -416,7 +449,7 @@ function drawWrappedText(
   let lines: string[] = [];
 
   while (fontSize >= minFontSize) {
-    context.font = `900 ${fontSize}px Impact, Arial Black, system-ui, sans-serif`;
+    context.font = `900 ${fontSize}px ${textStyleFontFamilies[textStyle.font]}`;
     lines = [];
     let currentLine = "";
 
@@ -447,9 +480,9 @@ function drawWrappedText(
 
   context.textAlign = "center";
   context.lineJoin = "round";
-  context.lineWidth = Math.max(8, fontSize * 0.12);
-  context.strokeStyle = "#111111";
-  context.fillStyle = "#ffffff";
+  context.lineWidth = Math.max(8, fontSize * 0.12) * textStyle.strokeScale;
+  context.strokeStyle = textStyle.stroke;
+  context.fillStyle = textStyle.fill;
 
   const lineHeight = fontSize * 1.08;
   const blockHeight = lineHeight * Math.max(1, lines.length - 1);
@@ -457,7 +490,9 @@ function drawWrappedText(
 
   lines.forEach((line, index) => {
     const lineY = startY + index * lineHeight;
-    context.strokeText(line, 0, lineY);
+    if (textStyle.strokeScale > 0) {
+      context.strokeText(line, 0, lineY);
+    }
     context.fillText(line, 0, lineY);
   });
   context.restore();
@@ -864,6 +899,10 @@ export function MemeGenerator({
   const [selectedStickerId, setSelectedStickerId] = useState<number | null>(
     null,
   );
+  const [textStyle, setTextStyle] = useState<MemeTextStyle>(
+    textStylePresets.classic,
+  );
+  const [showTextStyleOptions, setShowTextStyleOptions] = useState(false);
   const [frameEnabled, setFrameEnabled] = useState(true);
   const [autoLayoutEnabled, setAutoLayoutEnabled] = useState(true);
   const [textAboveStickers, setTextAboveStickers] = useState(true);
@@ -906,12 +945,12 @@ export function MemeGenerator({
       canvasHeight,
       measureText: context
         ? (value, fontSize) => {
-            context.font = `900 ${fontSize}px Impact, Arial Black, system-ui, sans-serif`;
+            context.font = `900 ${fontSize}px ${textStyleFontFamilies[textStyle.font]}`;
             return context.measureText(value).width;
           }
         : undefined,
     });
-  }, [canvasHeight, frameEnabled, outputRatio]);
+  }, [canvasHeight, frameEnabled, outputRatio, textStyle.font]);
 
   function materializeAutoLayout() {
     if (!autoLayoutEnabled) {
@@ -1073,13 +1112,13 @@ export function MemeGenerator({
 
     const drawFinalLayers = (imageBounds: CanvasBounds) => {
       if (!textAboveStickers) {
-        drawWrappedText(context, topText, textLayers.top, false, topAutoLayout);
-        drawWrappedText(context, bottomText, textLayers.bottom, true, bottomAutoLayout);
+        drawWrappedText(context, topText, textLayers.top, textStyle, false, topAutoLayout);
+        drawWrappedText(context, bottomText, textLayers.bottom, textStyle, true, bottomAutoLayout);
       }
       drawStickers(context, stickers, imageStickerCacheRef.current);
       if (textAboveStickers) {
-        drawWrappedText(context, topText, textLayers.top, false, topAutoLayout);
-        drawWrappedText(context, bottomText, textLayers.bottom, true, bottomAutoLayout);
+        drawWrappedText(context, topText, textLayers.top, textStyle, false, topAutoLayout);
+        drawWrappedText(context, bottomText, textLayers.bottom, textStyle, true, bottomAutoLayout);
       }
       if (frameEnabled) {
         drawFrame(context, canvasHeight);
@@ -1159,6 +1198,7 @@ export function MemeGenerator({
     autoLayoutEnabled,
     outputRatio,
     getAutoTextLayout,
+    textStyle,
   ]);
 
   function getCanvasPointFromClient(clientX: number, clientY: number) {
@@ -1905,6 +1945,18 @@ export function MemeGenerator({
     scrollToPreviewOnMobile();
   }
 
+  function applyTextStylePreset(presetId: TextStylePresetId) {
+    setTextStyle(textStylePresets[presetId]);
+  }
+
+  function updateTextStyle(updates: Partial<Omit<MemeTextStyle, "preset">>) {
+    setTextStyle((currentStyle) => ({
+      ...currentStyle,
+      ...updates,
+      preset: "custom",
+    }));
+  }
+
   function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) {
@@ -2159,42 +2211,6 @@ export function MemeGenerator({
                   Editable
                 </span>
               </div>
-              <div className="relative mt-5 rounded-[1.5rem] border border-zinc-200 bg-white/70 p-3">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-black text-zinc-900">
-                      Meme frame
-                    </p>
-                    <p className="text-xs font-semibold text-zinc-500">
-                      Applies to preview and PNG export.
-                    </p>
-                  </div>
-                  <div className="flex rounded-full bg-zinc-100 p-1">
-                    <button
-                      type="button"
-                      onClick={() => setFrameEnabled(true)}
-                      className={`rounded-full px-4 py-2 text-xs font-black transition ${
-                        frameEnabled
-                          ? "bg-zinc-950 text-white shadow-sm"
-                          : "text-zinc-600 hover:text-zinc-950"
-                      }`}
-                    >
-                      Frame On
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setFrameEnabled(false)}
-                      className={`rounded-full px-4 py-2 text-xs font-black transition ${
-                        !frameEnabled
-                          ? "bg-zinc-950 text-white shadow-sm"
-                          : "text-zinc-600 hover:text-zinc-950"
-                      }`}
-                    >
-                      Frame Off
-                    </button>
-                  </div>
-                </div>
-              </div>
               <label className="relative mt-5 block rounded-[1.5rem] border border-zinc-200 bg-[#fff7e8]/75 p-3">
                 <span className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
                   <span>
@@ -2376,6 +2392,133 @@ export function MemeGenerator({
                   </button>
                 </span>
               </label>
+              <div className="relative mt-5 rounded-[1.5rem] border border-zinc-200 bg-[#fff7e8]/75 p-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-black text-zinc-900">Text style</p>
+                    <p className="text-xs font-semibold text-zinc-500">
+                      Applies to top and bottom text.
+                    </p>
+                  </div>
+                  <span className="rounded-full bg-[#ffde59] px-3 py-1 text-xs font-black uppercase tracking-wide text-zinc-950">
+                    Shared
+                  </span>
+                </div>
+                <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                  {([
+                    ["classic", "Classic", "White + black"],
+                    ["christmas", "Christmas", "Gold + red"],
+                    ["yellow", "Yellow", "Yellow + black"],
+                    ["soft", "Soft", "Thin outline"],
+                  ] as const).map(([presetId, label, detail]) => (
+                    <button
+                      key={presetId}
+                      type="button"
+                      aria-label={`Apply ${label} text style`}
+                      onClick={() => applyTextStylePreset(presetId)}
+                      className={`rounded-2xl border px-3 py-2 text-left text-xs font-black transition ${
+                        textStyle.preset === presetId
+                          ? "border-zinc-950 bg-zinc-950 text-white shadow-sm"
+                          : "border-zinc-200 bg-white text-zinc-800 hover:border-zinc-950"
+                      }`}
+                    >
+                      <span className="block">{label}</span>
+                      <span
+                        className={`mt-1 block text-[10px] font-bold ${
+                          textStyle.preset === presetId
+                            ? "text-white/70"
+                            : "text-zinc-500"
+                        }`}
+                      >
+                        {detail}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  aria-expanded={showTextStyleOptions}
+                  onClick={() => setShowTextStyleOptions((current) => !current)}
+                  className="mt-3 flex w-full items-center justify-between rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-left text-xs font-black text-zinc-700 transition hover:border-zinc-950 hover:text-zinc-950"
+                >
+                  Customize text style
+                  <span aria-hidden="true" className="text-base leading-none">
+                    {showTextStyleOptions ? "−" : "+"}
+                  </span>
+                </button>
+                {showTextStyleOptions ? (
+                  <div className="mt-3 grid gap-3 border-t border-zinc-200 pt-3 sm:grid-cols-2">
+                    <label className="text-xs font-black text-zinc-700">
+                      Font
+                      <select
+                        aria-label="Text font"
+                        value={textStyle.font}
+                        onChange={(event) =>
+                          updateTextStyle({ font: event.target.value as TextStyleFont })
+                        }
+                        className="mt-1 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-bold text-zinc-950 outline-none focus:border-zinc-950"
+                      >
+                        <option value="impact">Classic Impact</option>
+                        <option value="rounded">Bold Rounded</option>
+                        <option value="sans">Bold Sans</option>
+                      </select>
+                    </label>
+                    <label className="text-xs font-black text-zinc-700">
+                      Text color
+                      <select
+                        aria-label="Text color"
+                        value={textStyle.fill}
+                        onChange={(event) => updateTextStyle({ fill: event.target.value })}
+                        className="mt-1 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-bold text-zinc-950 outline-none focus:border-zinc-950"
+                      >
+                        <option value="#ffffff">White</option>
+                        <option value="#ffde59">Yellow</option>
+                        <option value="#fca5a5">Soft red</option>
+                        <option value="#171717">Black</option>
+                      </select>
+                    </label>
+                    <label className="text-xs font-black text-zinc-700">
+                      Outline color
+                      <select
+                        aria-label="Outline color"
+                        value={textStyle.stroke}
+                        onChange={(event) => updateTextStyle({ stroke: event.target.value })}
+                        className="mt-1 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-bold text-zinc-950 outline-none focus:border-zinc-950"
+                      >
+                        <option value="#111111">Black</option>
+                        <option value="#ffffff">White</option>
+                        <option value="#7f1d1d">Deep red</option>
+                        <option value="transparent">None</option>
+                      </select>
+                    </label>
+                    <label className="text-xs font-black text-zinc-700">
+                      Outline thickness
+                      <select
+                        aria-label="Outline thickness"
+                        value={textStyle.strokeScale}
+                        onChange={(event) =>
+                          updateTextStyle({ strokeScale: Number(event.target.value) })
+                        }
+                        className="mt-1 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-bold text-zinc-950 outline-none focus:border-zinc-950"
+                      >
+                        <option value="1.12">Bold</option>
+                        <option value="1">Medium</option>
+                        <option value="0.72">Thin</option>
+                        <option value="0">None</option>
+                      </select>
+                    </label>
+                    <label className="flex items-center gap-3 text-xs font-black text-zinc-700 sm:col-span-2">
+                      <input
+                        type="checkbox"
+                        checked={textStyle.shadow}
+                        onChange={(event) => updateTextStyle({ shadow: event.target.checked })}
+                        className="h-4 w-4 accent-zinc-950"
+                      />
+                      Add a subtle shadow for busy photos
+                    </label>
+                  </div>
+                ) : null}
+              </div>
               <button
                 type="button"
                 onClick={handleClear}
