@@ -115,6 +115,16 @@ describe("MemeGenerator editing toolbar", () => {
     expect(screen.getByRole("button", { name: /^Rotate [A-Za-z]/ })).toBeVisible();
   });
 
+  it("adds a Christmas sticker with the existing sticker controls", () => {
+    renderWithMainImage();
+
+    fireEvent.click(screen.getByRole("button", { name: /Santa Hat/ }));
+
+    expectCanvasSettings();
+    expect(toolbar().getByRole("button", { name: "Delete" })).toBeVisible();
+    expect(screen.getByRole("button", { name: /^Rotate [A-Za-z]/ })).toBeVisible();
+  });
+
   it("keeps Canvas Settings visible after selecting an image sticker", () => {
     const view = renderWithMainImage();
     const imageStickerInput = view.container.querySelectorAll(
@@ -136,5 +146,21 @@ describe("MemeGenerator editing toolbar", () => {
     expect(toolbar().getByRole("button", { name: "Story 9:16" })).toHaveClass(
       "bg-[#ffde59]",
     );
+  });
+
+  it("keeps one frame control in the toolbar and offers shared text styles", () => {
+    renderWithMainImage();
+
+    expect(screen.getAllByRole("button", { name: "Frame On" })).toHaveLength(1);
+    expect(screen.getByText("Applies to top and bottom text.")).toBeVisible();
+
+    fireEvent.click(screen.getByRole("button", { name: "Apply Christmas text style" }));
+    expect(screen.getByRole("button", { name: "Apply Christmas text style" })).toHaveClass(
+      "bg-zinc-950",
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Customize text style" }));
+    expect(screen.getByRole("combobox", { name: "Text font" })).toBeVisible();
+    expect(screen.getByRole("combobox", { name: "Text color" })).toBeVisible();
   });
 });
